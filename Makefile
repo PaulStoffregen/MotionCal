@@ -1,6 +1,8 @@
+CC = gcc
+CFLAGS = -O2 -Wall
 
-imuread: imuread.c
-	gcc -O2 -Wall -o imuread imuread.c -lglut -lGLU -lGL
+imuread: imuread.o serialdata.o
+	$(CC) $(CFLAGS) -o $@ $^ -lglut -lGLU -lGL
 
 clean:
-	rm -f imuread
+	rm -f imuread *.o

@@ -1,206 +1,41 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdarg.h>
-#include <string.h>
-#include <termios.h>
-#include <unistd.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <sys/select.h>
-#include <GL/glut.h> // sudo apt-get install xorg-dev libglu1-mesa-dev freeglut3-dev
+#include "imuread.h"
 
-#define PORT "/dev/ttyACM0"
-#define TIMEOUT_MSEC 40
-
-
-#define MAGBUFFSIZEX 14
-#define MAGBUFFSIZEY 28
-#define MAGBUFFSIZE (MAGBUFFSIZEX * MAGBUFFSIZEY)
-
-typedef struct {
-	float x;
-	float y;
-	float z;
-	int valid;
-} magdata_t;
 magdata_t caldata[MAGBUFFSIZE];
 magdata_t hard_iron;
 magdata_t current_position;
-typedef struct {
-	float q1;
-	float q2;
-	float q3;
-	float q4;
-} quat_t;
 quat_t current_orientation;
 
-int fd=-1;
-void die(const char *format, ...) __attribute__ ((format (printf, 1, 2)));
-void *malloc_or_die(size_t size);
 
-void print_data(const char *name, const unsigned char *data, int len)
+void quad_to_rotation(const quat_t *quat, float *rmatrix)
 {
-	int i;
+	float qx = quat->x;
+	float qy = quat->y;
+	float qz = quat->z;
+	float qw = quat->w;
 
-	printf("%s (%2d bytes):", name, len);
-	for (i=0; i < len; i++) {
-		printf(" %02X", data[i]);
-	}
-	printf("\n");
+	rmatrix[0] = 1.0f - 2.0f * qy * qy - 2.0f * qz * qz;
+	rmatrix[1] = 2.0f * qx * qy - 2.0f * qz * qw;
+	rmatrix[2] = 2.0f * qx * qz + 2.0f * qy * qw;
+	rmatrix[3] = 2.0f * qx * qy + 2.0f * qz * qw;
+	rmatrix[4] = 1.0f  - 2.0f * qx * qx - 2.0f * qz * qz;
+	rmatrix[5] = 2.0f * qy * qz - 2.0f * qx * qw;
+	rmatrix[6] = 2.0f * qx * qz - 2.0f * qy * qw;
+	rmatrix[7] = 2.0f * qy * qz + 2.0f * qx * qw;
+	rmatrix[8] = 1.0f  - 2.0f * qx * qx - 2.0f * qy * qy;
 }
 
-
-void packet_primary_data(const unsigned char *data)
+void rotate(const magdata_t *in, magdata_t *out, const float *rmatrix)
 {
-	int16_t x, y, z, w;
-
-	x = (data[13] << 8) | data[12];
-	y = (data[15] << 8) | data[14];
-	z = (data[17] << 8) | data[16];
-	current_position.x = (float)x / 10.0f;
-	current_position.y = (float)y / 10.0f;
-	current_position.z = (float)z / 10.0f;
-	current_orientation.q1 = (float)((int16_t)((data[25] << 8) | data[24])) / 30000.0f;
-	current_orientation.q2 = (float)((int16_t)((data[27] << 8) | data[26])) / 30000.0f;
-	current_orientation.q3 = (float)((int16_t)((data[29] << 8) | data[28])) / 30000.0f;
-	current_orientation.q4 = (float)((int16_t)((data[31] << 8) | data[30])) / 30000.0f;
-#if 0
-	printf("mag data, %5.2f %5.2f %5.2f\n",
-		current_position.x,
-		current_position.y,
-		current_position.z
-	);
-#endif
-#if 0
-	printf("orientation: %5.3f %5.3f %5.3f %5.3f\n",
-		current_orientation.q1,
-		current_orientation.q2,
-		current_orientation.q3,
-		current_orientation.q4
-	);
-#endif
-}
-
-void packet_magnetic_cal(const unsigned char *data)
-{
-	int16_t id, x, y, z;
-	magdata_t *cal;
-	float newx, newy, newz;
-
-	id = (data[7] << 8) | data[6];
-	x = (data[9] << 8) | data[8];
-	y = (data[11] << 8) | data[10];
-	z = (data[13] << 8) | data[12];
-
-	if (id == 1) {
-		cal = &hard_iron;
-		cal->x = (float)x / 10.0f;
-		cal->y = (float)y / 10.0f;
-		cal->z = (float)z / 10.0f;
-		cal->valid = 1;
-	} else if (id >= 10 && id < MAGBUFFSIZE+10) {
-		newx = (float)x / 10.0f;
-		newy = (float)y / 10.0f;
-		newz = (float)z / 10.0f;
-		cal = &caldata[id - 10];
-		if (!cal->valid || cal->x != newx || cal->y != newy || cal->z != newz) {
-			cal->x = newx;
-			cal->y = newy;
-			cal->z = newz;
-			cal->valid = 1;
-			printf("mag cal, id=%3d: %5d %5d %5d\n", id, x, y, z);
-		}
+	if (out == NULL) return;
+	if (in == NULL || in->valid == 0) {
+		out->valid = 0;
+		out->x = out->y = out->z = 0;
+		return;
 	}
-}
-
-void packet(const unsigned char *data, int len)
-{
-	if (len <= 0) return;
-	//print_data("packet", data, len);
-
-	if (data[0] == 1 && len == 34) {
-		packet_primary_data(data);
-	} else if (data[0] == 6 && len == 14) {
-		packet_magnetic_cal(data);
-	}
-	// TODO: actually do something with the arriving data...
-}
-
-void packet_encoded(const unsigned char *data, int len)
-{
-	const unsigned char *p;
-	unsigned char buf[256];
-	int buflen=0, copylen;
-
-	//printf("packet_encoded, len = %d\n", len);
-	p = memchr(data, 0x7D, len);
-	if (p == NULL) {
-		packet(data, len);
-	} else {
-		//printf("** decoding necessary\n");
-		while (1) {
-			copylen = p - data;
-			if (copylen > 0) {
-				//printf("  copylen = %d\n", copylen);
-				// TODO: overflow check
-				memcpy(buf+buflen, data, copylen);
-				buflen += copylen;
-				data += copylen;
-				len -= copylen;
-			}
-			// TODO: overflow check
-			buf[buflen++] = (p[1] == 0x5E) ? 0x7E : 0x7D;
-			data += 2;
-			len -= 2;
-			if (len <= 0) break;
-			p = memchr(data, 0x7D, len);
-			if (p == NULL) {
-				// TODO: overflow check
-				memcpy(buf+buflen, data, len);
-				buflen += len;
-				break;
-			}
-		}
-		//printf("** decoded to %d\n", buflen);
-		packet(buf, buflen);
-	}
-}
-
-void newdata(const unsigned char *data, int len)
-{
-	static unsigned char packetbuf[256];
-	static unsigned int packetlen=0;
-	const unsigned char *p;
-	int copylen;
-
-	//print_data("newdata", data, len);
-	while (len > 0) {
-		p = memchr(data, 0x7E, len);
-		if (p == NULL) {
-			// TODO: overflow check
-			memcpy(packetbuf+packetlen, data, len);
-			packetlen += len;
-			len = 0;
-		} else if (p > data) {
-			copylen = p - data;
-			// TODO: overflow check
-			memcpy(packetbuf+packetlen, data, copylen);
-			packet_encoded(packetbuf, packetlen+copylen);
-			packetlen = 0;
-			data += copylen + 1;
-			len -= copylen + 1;
-		} else {
-			if (packetlen > 0) {
-				packet_encoded(packetbuf, packetlen);
-				packetlen = 0;
-			}
-			data++;
-			len--;
-		}
-	}
+	out->x = in->x * rmatrix[0] + in->y * rmatrix[1] + in->z * rmatrix[2];
+	out->y = in->x * rmatrix[3] + in->y * rmatrix[4] + in->z * rmatrix[5];
+	out->z = in->x * rmatrix[6] + in->y * rmatrix[7] + in->z * rmatrix[8];
+	out->valid = 1;
 }
 
 void resize_callback(int width, int height)
@@ -234,14 +69,7 @@ void display_callback(void)
 	float xoff, yoff, zoff;
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glColor3f(1, 0, 0);	// set current color to black
-#if 0
-	glBegin(GL_POLYGON);		// draw filled triangle
-	glVertex2i(200, 125);		// specify each vertex of triangle
-	glVertex2i(100, 375);
-	glVertex2i(300, 375);
-	glEnd();			// OpenGL draws the filled triangle
-#endif
+	glColor3f(1, 0, 0);	// set current color to red
 
 	xscale = 0.05;
 	yscale = 0.05;
@@ -267,11 +95,6 @@ void display_callback(void)
 			}
 		}
 	}
-	//glTranslated(0.0,1.2,-30);
-	//glutSolidSphere(1,20,20); // radius, slices, stacks
-	//glutWireSphere(3,20,20); // radius, slices, stacks
-
-
 	glutSwapBuffers();
 }
 
@@ -279,37 +102,8 @@ void display_callback(void)
 
 void timer_callback(int val)
 {
-	unsigned char buf[256];
-	static int nodata_count=0;
-	int n;
-
-	//printf("timer_callback\n");
 	glutTimerFunc(TIMEOUT_MSEC, timer_callback, 0);
-	while (fd >= 0) {
-		n = read(fd, buf, sizeof(buf));
-		if (n > 0 && n <= sizeof(buf)) {
-			//printf("read %d bytes\n", r);
-			newdata(buf, n);
-			nodata_count = 0;
-		} else if (n == 0) {
-			printf("read no data\n");
-			if (++nodata_count > 6) {
-				close(fd);
-				fd = -1;
-				die("No data from %s\n", PORT);
-			}
-			break;
-		} else {
-			n = errno;
-			if (n == EAGAIN) {
-				break;
-			} else if (n == EAGAIN) {
-			} else {
-				printf("read error, n=%d\n", n);
-				break;
-			}
-		}
-	}
+	read_serial_data();
 	glutPostRedisplay();
 }
 
@@ -325,12 +119,6 @@ const GLfloat high_shininess[] = { 100.0f };
 
 int main(int argc, char *argv[])
 {
-	int r;
-	struct termios termsettings;
-	//struct timeval tv;
-	//fd_set rdfs;
-	//unsigned char buf[256];
-
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
 	glutInitWindowSize(600, 500);
@@ -338,10 +126,8 @@ int main(int argc, char *argv[])
 	glClearColor(1.0, 1.0, 1.0, 1.0);
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
-
 	//glShadeModel(GL_FLAT);
 	//gluOrtho2D(0, 600, 0, 500);
-
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 	glEnable(GL_LIGHT0);
@@ -361,71 +147,11 @@ int main(int argc, char *argv[])
 	glutDisplayFunc(display_callback);
 	glutTimerFunc(TIMEOUT_MSEC, timer_callback, 0);
 
-	fd = open(PORT, O_RDWR | O_NONBLOCK);
-	if (fd < 0) die("Unable to open %s\n", PORT);
-
-	r = tcgetattr(fd, &termsettings);
-	if (r < 0) die("Unable to read terminal settings from %s\n", PORT);
-	cfmakeraw(&termsettings);
-	cfsetspeed(&termsettings, B115200);
-	r = tcsetattr(fd, TCSANOW, &termsettings);
-	if (r < 0) die("Unable to program terminal settings on %s\n", PORT);
-
-
+	open_port(PORT);
 	glutMainLoop();
-
-#if 0
-	// GLUT lacks any way to register I/O callbacks
-	// so we'll just have to poll from a timer
-	while (1) {
-		FD_ZERO(&rdfs);
-		FD_SET(fd, &rdfs);
-		tv.tv_sec = 0;
-		tv.tv_usec = 100000;
-		r = select(fd+1, &rdfs, NULL, NULL, &tv);
-		if (r == 1) {
-			// data
-			r = read(fd, buf, sizeof(buf));
-			if (r > 0 && r <= sizeof(buf)) {
-				//printf("read %d bytes\n", r);
-				newdata(buf, r);
-			} else if (r == 0) {
-				printf("read no data\n");
-				break;
-			} else {
-				printf("read error\n");
-				break;
-			}
-		} else if (r == 0) {
-			printf("timeout\n");
-			// timeout
-		} else {
-			printf("select error\n");
-			break;
-		}
-	}
-#endif
-	close(fd);
+	close_port();
 	return 0;
 }
 
 
-
-
-void die(const char *format, ...)
-{
-        va_list args;
-        va_start(args, format);
-        vfprintf(stderr, format, args);
-        exit(1);
-}
-
-void *malloc_or_die(size_t size)
-{
-        void *p;
-
-        p = malloc(size);
-        if (!p) die("unable to allocate memory, %d bytes\n", (int)size);
-        return p;
-}
 
