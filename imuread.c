@@ -9,12 +9,14 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/select.h>
+#include <GL/glut.h> // sudo apt-get install xorg-dev libglu1-mesa-dev freeglut3-dev
 
 #define PORT "/dev/ttyACM0"
+#define TIMEOUT_MSEC 40
 
+int fd=-1;
 void die(const char *format, ...) __attribute__ ((format (printf, 1, 2)));
 void *malloc_or_die(size_t size);
-
 
 void print_data(const char *name, const unsigned char *data, int len)
 {
@@ -109,14 +111,57 @@ void newdata(const unsigned char *data, int len)
 	}
 }
 
-
-int main()
+void display_callback(void)
 {
-	int fd, r;
-	struct termios termsettings;
-	struct timeval tv;
-	fd_set rdfs;
+	glClear(GL_COLOR_BUFFER_BIT);	// clear the display
+	glColor3f(1.0, 1.0, 1.0);	// set current color to white
+	glBegin(GL_POLYGON);		// draw filled triangle
+	glVertex2i(200, 125);		// specify each vertex of triangle
+	glVertex2i(100, 375);
+	glVertex2i(300, 375);
+	glEnd();			// OpenGL draws the filled triangle
+	glFlush();			// Complete any pending operations
+}
+
+void timer_callback(int val)
+{
 	unsigned char buf[256];
+	int n;
+
+	printf("timer_callback\n");
+	glutTimerFunc(TIMEOUT_MSEC, timer_callback, 0);
+	while (fd >= 0) {
+		n = read(fd, buf, sizeof(buf));
+		if (n > 0 && n <= sizeof(buf)) {
+			//printf("read %d bytes\n", r);
+			newdata(buf, n);
+		} else if (n == 0) {
+			printf("read no data\n");
+			break;
+		} else {
+			printf("read error\n");
+			break;
+		}
+	}
+	glutPostRedisplay();
+}
+
+int main(int argc, char *argv[])
+{
+	int r;
+	struct termios termsettings;
+	//struct timeval tv;
+	//fd_set rdfs;
+	//unsigned char buf[256];
+
+	glutInit(&argc, argv);
+	glutInitDisplayMode(GLUT_RGBA);
+	glutInitWindowSize(600, 500);
+	glutCreateWindow("IMU Read");
+	glClearColor(0.0, 0.0, 0.0, 0.0);
+	gluOrtho2D(0, 600, 0, 500);
+	glutDisplayFunc(display_callback);
+	glutTimerFunc(TIMEOUT_MSEC, timer_callback, 0);
 
 	fd = open(PORT, O_RDWR | O_NONBLOCK);
 	if (fd < 0) die("Unable to open %s\n", PORT);
@@ -128,6 +173,12 @@ int main()
 	r = tcsetattr(fd, TCSANOW, &termsettings);
 	if (r < 0) die("Unable to program terminal settings on %s\n", PORT);
 
+
+	glutMainLoop();
+
+#if 0
+	// GLUT lacks any way to register I/O callbacks
+	// so we'll just have to poll from a timer
 	while (1) {
 		FD_ZERO(&rdfs);
 		FD_SET(fd, &rdfs);
@@ -155,7 +206,7 @@ int main()
 			break;
 		}
 	}
-
+#endif
 	close(fd);
 	return 0;
 }
