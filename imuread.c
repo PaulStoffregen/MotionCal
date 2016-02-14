@@ -38,18 +38,6 @@ void rotate(const magdata_t *in, magdata_t *out, const float *rmatrix)
 	out->valid = 1;
 }
 
-void resize_callback(int width, int height)
-{
-	const float ar = (float) width / (float) height;
-
-	glViewport(0, 0, width, height);
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glFrustum(-ar, ar, -1.0, 1.0, 2.0, 100.0);
-
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity() ;
-}
 
 /*
 typedef struct {
@@ -64,9 +52,11 @@ magdata_t caldata[MAGBUFFSIZE];
 void display_callback(void)
 {
 	int i;
-	float x, y, z;
+	//float x, y, z;
 	float xscale, yscale, zscale;
 	float xoff, yoff, zoff;
+	float rotation[9];
+	magdata_t point, draw;
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glColor3f(1, 0, 0);	// set current color to red
@@ -79,16 +69,23 @@ void display_callback(void)
 	zoff = -7.0;
 
 	if (hard_iron.valid) {
+		quad_to_rotation(&current_orientation, rotation);
 		for (i=0; i < MAGBUFFSIZE; i++) {
 			if (caldata[i].valid) {
-				x = caldata[i].x - hard_iron.x;
-				y = caldata[i].y - hard_iron.y;
-				z = caldata[i].z - hard_iron.z;
+				point.x = caldata[i].x - hard_iron.x;
+				point.y = caldata[i].y - hard_iron.y;
+				point.z = caldata[i].z - hard_iron.z;
+				point.valid = 1;
+				// TODO: apply soft iron cal
+
+				memcpy(&draw, &point, sizeof(draw));
+				rotate(&point, &draw, rotation);
+
 				glPushMatrix();
 				glTranslatef(
-					x * xscale + xoff,
-					y * yscale + yoff,
-					z * zscale + zoff
+					draw.x * xscale + xoff,
+					draw.z * yscale + yoff,
+					draw.y * zscale + zoff
 				);
 				glutSolidSphere(0.08,16,16); // radius, slices, stacks
 				glPopMatrix();
@@ -98,13 +95,24 @@ void display_callback(void)
 	glutSwapBuffers();
 }
 
-
-
 void timer_callback(int val)
 {
 	glutTimerFunc(TIMEOUT_MSEC, timer_callback, 0);
 	read_serial_data();
-	glutPostRedisplay();
+	glutPostRedisplay(); // TODO: only redisplay if data changes
+}
+
+void resize_callback(int width, int height)
+{
+	const float ar = (float) width / (float) height;
+
+	glViewport(0, 0, width, height);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glFrustum(-ar, ar, -1.0, 1.0, 2.0, 100.0);
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity() ;
 }
 
 const GLfloat light_ambient[]  = { 0.0f, 0.0f, 0.0f, 1.0f };
