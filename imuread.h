@@ -22,6 +22,10 @@
 #define MAGBUFFSIZEY 28
 #define MAGBUFFSIZE (MAGBUFFSIZEX * MAGBUFFSIZEY)
 
+#ifdef __cplusplus
+extern "C"{
+#endif
+
 typedef struct {
 	float x;
 	float y;
@@ -46,6 +50,13 @@ extern void rotate(const magdata_t *in, magdata_t *out, const float *rmatrix);
 extern int open_port(const char *name);
 extern void read_serial_data(void);
 extern void close_port(void);
+void visualize_init(void);
+void display_callback(void);
+void resize_callback(int width, int height);
+void timer_callback(int val);
 
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 #endif
