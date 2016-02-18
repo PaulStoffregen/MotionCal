@@ -13,7 +13,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/select.h>
-#include <GL/glut.h> // sudo apt-get install xorg-dev libglu1-mesa-dev freeglut3-dev
+#include <GL/gl.h>
+#include <GL/glu.h>
 
 #define PORT "/dev/ttyACM0"
 #define TIMEOUT_MSEC 40
@@ -53,7 +54,6 @@ extern void close_port(void);
 void visualize_init(void);
 void display_callback(void);
 void resize_callback(int width, int height);
-void timer_callback(int val);
 
 #ifdef __cplusplus
 } // extern "C"

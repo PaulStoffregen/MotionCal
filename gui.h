@@ -2,6 +2,60 @@
 #define gui__h_
 
 #include <wx/wx.h>
+#include "wx/timer.h"
+#include "wx/glcanvas.h"
+#include "wx/math.h"
+#include "wx/log.h"
+#include "wx/wfstream.h"
+#include "wx/zstream.h"
+#include "wx/txtstrm.h"
+#if defined(__WXMAC__) || defined(__WXCOCOA__)
+#ifdef __DARWIN__
+#include <OpenGL/gl.h>
+#include <OpenGL/glu.h>
+#else
+#include <gl.h>
+#include <glu.h>
+#endif
+#else
+#include <GL/gl.h>
+#include <GL/glu.h>
+#endif
+
+
+#define ID_TIMER		10000
+
+
+class MyCanvas : public wxGLCanvas
+{
+public:
+	MyCanvas(wxWindow *parent,
+		wxWindowID id = wxID_ANY,
+		int *gl_attrib = NULL);
+
+	virtual ~MyCanvas();
+
+	void OnPaint(wxPaintEvent& event);
+	void OnSize(wxSizeEvent& event);
+	void OnChar(wxKeyEvent& event);
+	void OnMouseEvent(wxMouseEvent& event);
+
+	void LoadSurface(const wxString& filename);
+	void InitMaterials();
+	void InitGL();
+
+private:
+	wxGLContext *m_glRC;
+
+	//GLfloat m_verts[MAXVERTS][3];
+	//GLfloat m_norms[MAXVERTS][3];
+	//GLint m_numverts;
+	//GLfloat m_xrot;
+	//GLfloat m_yrot;
+
+	wxDECLARE_NO_COPY_CLASS(MyCanvas);
+	wxDECLARE_EVENT_TABLE();
+};
 
 
 class MyFrame: public wxFrame
@@ -13,9 +67,13 @@ public:
 		const wxSize &size = wxDefaultSize,
 		long style = wxDEFAULT_FRAME_STYLE);
 	~MyFrame(void);
+	void InitGL();
 private:
+	MyCanvas *m_canvas;
+	wxTimer *m_timer;
 	void OnAbout(wxCommandEvent &event);
 	void OnQuit(wxCommandEvent &event);
+	void OnTimer(wxTimerEvent &event);
 	DECLARE_EVENT_TABLE()
 };
 

@@ -1,23 +1,17 @@
 #include "imuread.h"
+#include <GL/glut.h> // sudo apt-get install xorg-dev libglu1-mesa-dev freeglut3-dev
 
-void timer_callback(int val)
+static void timer_callback(int val)
 {
 	glutTimerFunc(TIMEOUT_MSEC, timer_callback, 0);
 	read_serial_data();
 	glutPostRedisplay(); // TODO: only redisplay if data changes
 }
 
-void resize_callback(int width, int height)
+static void glut_display_callback(void)
 {
-	const float ar = (float) width / (float) height;
-
-	glViewport(0, 0, width, height);
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glFrustum(-ar, ar, -1.0, 1.0, 2.0, 100.0);
-
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity() ;
+	display_callback();
+	glutSwapBuffers();
 }
 
 int main(int argc, char *argv[])
@@ -30,7 +24,7 @@ int main(int argc, char *argv[])
 	visualize_init();
 
 	glutReshapeFunc(resize_callback);
-	glutDisplayFunc(display_callback);
+	glutDisplayFunc(glut_display_callback);
 	glutTimerFunc(TIMEOUT_MSEC, timer_callback, 0);
 
 	open_port(PORT);

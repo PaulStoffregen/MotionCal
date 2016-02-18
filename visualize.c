@@ -52,11 +52,11 @@ magdata_t caldata[MAGBUFFSIZE];
 void display_callback(void)
 {
 	int i;
-	//float x, y, z;
 	float xscale, yscale, zscale;
 	float xoff, yoff, zoff;
 	float rotation[9];
 	magdata_t point, draw;
+	GLUquadric *sphere;
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glColor3f(1, 0, 0);	// set current color to red
@@ -69,6 +69,9 @@ void display_callback(void)
 	zoff = -7.0;
 
 	if (hard_iron.valid) {
+		sphere = gluNewQuadric();
+		gluQuadricDrawStyle(sphere, GLU_FILL);
+		gluQuadricNormals(sphere, GLU_SMOOTH);
 		quad_to_rotation(&current_orientation, rotation);
 		for (i=0; i < MAGBUFFSIZE; i++) {
 			if (caldata[i].valid) {
@@ -87,12 +90,26 @@ void display_callback(void)
 					draw.z * yscale + yoff,
 					draw.y * zscale + zoff
 				);
-				glutSolidSphere(0.08,16,16); // radius, slices, stacks
+				gluSphere(sphere, 0.08, 12, 10);
+
 				glPopMatrix();
 			}
 		}
+		gluDeleteQuadric(sphere);
 	}
-	glutSwapBuffers();
+}
+
+void resize_callback(int width, int height)
+{
+	const float ar = (float) width / (float) height;
+
+	glViewport(0, 0, width, height);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glFrustum(-ar, ar, -1.0, 1.0, 2.0, 100.0);
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity() ;
 }
 
 

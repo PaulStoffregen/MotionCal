@@ -7,7 +7,7 @@ WXCONFIG = ~/wxwidgets/3.0.2.gtk2-opengl/bin/wx-config
 all: gui imuread
 
 gui: gui.o visualize.o serialdata.o
-	g++ $(CFLAGS) -o $@ $^ `$(WXCONFIG) --libs` -lglut -lGLU -lGL
+	g++ $(CFLAGS) -o $@ $^ `$(WXCONFIG) --libs all,opengl`
 
 imuread: imuread.o visualize.o serialdata.o
 	$(CC) $(CFLAGS) -o $@ $^ -lglut -lGLU -lGL
