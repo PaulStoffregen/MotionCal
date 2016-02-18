@@ -6,7 +6,7 @@ magdata_t current_position;
 quat_t current_orientation;
 
 
-void quad_to_rotation(const quat_t *quat, float *rmatrix)
+static void quad_to_rotation(const quat_t *quat, float *rmatrix)
 {
 	float qx = quat->x;
 	float qy = quat->y;
@@ -24,7 +24,7 @@ void quad_to_rotation(const quat_t *quat, float *rmatrix)
 	rmatrix[8] = 1.0f  - 2.0f * qx * qx - 2.0f * qy * qy;
 }
 
-void rotate(const magdata_t *in, magdata_t *out, const float *rmatrix)
+static void rotate(const magdata_t *in, magdata_t *out, const float *rmatrix)
 {
 	if (out == NULL) return;
 	if (in == NULL || in->valid == 0) {
@@ -49,6 +49,9 @@ typedef struct {
 magdata_t caldata[MAGBUFFSIZE];
 */
 
+static GLuint spherelist;
+static GLuint spherelowreslist;
+
 void display_callback(void)
 {
 	int i;
@@ -56,7 +59,6 @@ void display_callback(void)
 	float xoff, yoff, zoff;
 	float rotation[9];
 	magdata_t point, draw;
-	GLUquadric *sphere;
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glColor3f(1, 0, 0);	// set current color to red
@@ -69,9 +71,6 @@ void display_callback(void)
 	zoff = -7.0;
 
 	if (hard_iron.valid) {
-		sphere = gluNewQuadric();
-		gluQuadricDrawStyle(sphere, GLU_FILL);
-		gluQuadricNormals(sphere, GLU_SMOOTH);
 		quad_to_rotation(&current_orientation, rotation);
 		for (i=0; i < MAGBUFFSIZE; i++) {
 			if (caldata[i].valid) {
@@ -90,12 +89,15 @@ void display_callback(void)
 					draw.z * yscale + yoff,
 					draw.y * zscale + zoff
 				);
-				gluSphere(sphere, 0.08, 12, 10);
+				if (draw.y >= 0.0f) {
+					glCallList(spherelist);
+				} else {
+					glCallList(spherelowreslist);
+				}
 
 				glPopMatrix();
 			}
 		}
-		gluDeleteQuadric(sphere);
 	}
 }
 
@@ -113,23 +115,24 @@ void resize_callback(int width, int height)
 }
 
 
-const GLfloat light_ambient[]  = { 0.0f, 0.0f, 0.0f, 1.0f };
-const GLfloat light_diffuse[]  = { 1.0f, 1.0f, 1.0f, 1.0f };
-const GLfloat light_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-const GLfloat light_position[] = { 2.0f, 5.0f, 5.0f, 0.0f };
+static const GLfloat light_ambient[]  = { 0.0f, 0.0f, 0.0f, 1.0f };
+static const GLfloat light_diffuse[]  = { 1.0f, 1.0f, 1.0f, 1.0f };
+static const GLfloat light_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+static const GLfloat light_position[] = { 2.0f, 5.0f, 5.0f, 0.0f };
 
-const GLfloat mat_ambient[]    = { 0.7f, 0.7f, 0.7f, 1.0f };
-const GLfloat mat_diffuse[]    = { 0.8f, 0.8f, 0.8f, 1.0f };
-const GLfloat mat_specular[]   = { 1.0f, 1.0f, 1.0f, 1.0f };
-const GLfloat high_shininess[] = { 100.0f };
+static const GLfloat mat_ambient[]    = { 0.7f, 0.7f, 0.7f, 1.0f };
+static const GLfloat mat_diffuse[]    = { 0.8f, 0.8f, 0.8f, 1.0f };
+static const GLfloat mat_specular[]   = { 1.0f, 1.0f, 1.0f, 1.0f };
+static const GLfloat high_shininess[] = { 100.0f };
 
 void visualize_init(void)
 {
+	GLUquadric *sphere;
+
 	glClearColor(1.0, 1.0, 1.0, 1.0);
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 	//glShadeModel(GL_FLAT);
-	//gluOrtho2D(0, 600, 0, 500);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 	glEnable(GL_LIGHT0);
@@ -144,6 +147,19 @@ void visualize_init(void)
 	glMaterialfv(GL_FRONT, GL_DIFFUSE,   mat_diffuse);
 	glMaterialfv(GL_FRONT, GL_SPECULAR,  mat_specular);
 	glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess);
+
+	sphere = gluNewQuadric();
+	gluQuadricDrawStyle(sphere, GLU_FILL);
+	gluQuadricNormals(sphere, GLU_SMOOTH);
+	spherelist = glGenLists(1);
+	glNewList(spherelist, GL_COMPILE);
+	gluSphere(sphere, 0.08, 16, 14);
+	glEndList();
+	spherelowreslist = glGenLists(1);
+	glNewList(spherelowreslist, GL_COMPILE);
+	gluSphere(sphere, 0.08, 12, 10);
+	glEndList();
+	gluDeleteQuadric(sphere);
 }
 
 

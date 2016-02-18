@@ -46,8 +46,6 @@ extern quat_t current_orientation;
 
 extern void die(const char *format, ...) __attribute__ ((format (printf, 1, 2)));
 extern void *malloc_or_die(size_t size);
-extern void quad_to_rotation(const quat_t *quat, float *rmatrix);
-extern void rotate(const magdata_t *in, magdata_t *out, const float *rmatrix);
 extern int open_port(const char *name);
 extern void read_serial_data(void);
 extern void close_port(void);
