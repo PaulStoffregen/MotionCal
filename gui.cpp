@@ -69,7 +69,7 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
 {
 	wxMenuBar *menuBar;
 	wxMenu *menu;
-	wxMenuItem *item;
+	//wxMenuItem *item;
 
 	menuBar = new wxMenuBar;
 	menu = new wxMenu;
@@ -87,7 +87,7 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
         { WX_GL_RGBA, WX_GL_MIN_RED, 1, WX_GL_MIN_GREEN, 1,
         WX_GL_MIN_BLUE, 1, WX_GL_DEPTH_SIZE, 1,
         WX_GL_DOUBLEBUFFER,
-	None};
+	0};
 
 
 	m_canvas = new MyCanvas(this, wxID_ANY, gl_attrib);

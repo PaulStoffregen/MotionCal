@@ -1,10 +1,17 @@
+#if defined(LINUX) || defined(MACOSX)
+
 #include "imuread.h"
 #include <GL/glut.h> // sudo apt-get install xorg-dev libglu1-mesa-dev freeglut3-dev
 
+void die(const char *format, ...) __attribute__ ((format (printf, 1, 2)));
+
 static void timer_callback(int val)
 {
+	int r;
+
 	glutTimerFunc(TIMEOUT_MSEC, timer_callback, 0);
-	read_serial_data();
+	r = read_serial_data();
+	if (r < 0) die("Error reading %s\n", PORT);
 	glutPostRedisplay(); // TODO: only redisplay if data changes
 }
 
@@ -27,11 +34,26 @@ int main(int argc, char *argv[])
 	glutDisplayFunc(glut_display_callback);
 	glutTimerFunc(TIMEOUT_MSEC, timer_callback, 0);
 
-	open_port(PORT);
+	if (!open_port(PORT)) die("Unable to open %s\n", PORT);
 	glutMainLoop();
 	close_port();
 	return 0;
 }
 
+void die(const char *format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	vfprintf(stderr, format, args);
+	close_port();
+	exit(1);
+}
 
+#else
 
+int main(int argc, char *argv[])
+{
+	return 0;
+}
+
+#endif

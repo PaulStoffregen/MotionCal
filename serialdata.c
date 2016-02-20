@@ -1,6 +1,5 @@
 #include "imuread.h"
 
-static int portfd=-1;
 
 void print_data(const char *name, const unsigned char *data, int len)
 {
@@ -13,7 +12,7 @@ void print_data(const char *name, const unsigned char *data, int len)
 	printf("\n");
 }
 
-void packet_primary_data(const unsigned char *data)
+static void packet_primary_data(const unsigned char *data)
 {
 	current_position.x = (float)((int16_t)((data[13] << 8) | data[12])) / 10.0f;
 	current_position.y = (float)((int16_t)((data[15] << 8) | data[14])) / 10.0f;
@@ -39,7 +38,7 @@ void packet_primary_data(const unsigned char *data)
 #endif
 }
 
-void packet_magnetic_cal(const unsigned char *data)
+static void packet_magnetic_cal(const unsigned char *data)
 {
 	int16_t id, x, y, z;
 	magdata_t *cal;
@@ -71,7 +70,7 @@ void packet_magnetic_cal(const unsigned char *data)
 	}
 }
 
-void packet(const unsigned char *data, int len)
+static void packet(const unsigned char *data, int len)
 {
 	if (len <= 0) return;
 	//print_data("packet", data, len);
@@ -84,7 +83,7 @@ void packet(const unsigned char *data, int len)
 	// TODO: actually do something with the arriving data...
 }
 
-void packet_encoded(const unsigned char *data, int len)
+static void packet_encoded(const unsigned char *data, int len)
 {
 	const unsigned char *p;
 	unsigned char buf[256];
@@ -124,7 +123,7 @@ void packet_encoded(const unsigned char *data, int len)
 	}
 }
 
-void newdata(const unsigned char *data, int len)
+static void newdata(const unsigned char *data, int len)
 {
 	static unsigned char packetbuf[256];
 	static unsigned int packetlen=0;
@@ -158,51 +157,61 @@ void newdata(const unsigned char *data, int len)
 	}
 }
 
+#if defined(LINUX)
+
+static int portfd=-1;
+
 int open_port(const char *name)
 {
 	struct termios termsettings;
 	int r;
 
 	portfd = open(name, O_RDWR | O_NONBLOCK);
-	if (portfd < 0) die("Unable to open %s\n", name);
-
+	if (portfd < 0) return 0;
 	r = tcgetattr(portfd, &termsettings);
-	if (r < 0) die("Unable to read terminal settings from %s\n", name);
+	if (r < 0) {
+		close_port();
+		return 0;
+	}
 	cfmakeraw(&termsettings);
 	cfsetspeed(&termsettings, B115200);
 	r = tcsetattr(portfd, TCSANOW, &termsettings);
-	if (r < 0) die("Unable to program terminal settings on %s\n", name);
-	return 0;
+	if (r < 0) {
+		close_port();
+		return 0;
+	}
+	return 1;
 }
 
-void read_serial_data(void)
+int read_serial_data(void)
 {
 	unsigned char buf[256];
 	static int nodata_count=0;
 	int n;
 
-	while (portfd >= 0) {
+	if (portfd < 0) return -1;
+	while (1) {
 		n = read(portfd, buf, sizeof(buf));
 		if (n > 0 && n <= sizeof(buf)) {
-			//printf("read %d bytes\n", r);
 			newdata(buf, n);
 			nodata_count = 0;
+			//return n;
 		} else if (n == 0) {
-			printf("read no data\n");
 			if (++nodata_count > 6) {
 				close_port();
-				die("No data from %s\n", PORT);
 				nodata_count = 0;
+				close_port();
+				return -1;
 			}
-			break;
+			return 0;
 		} else {
 			n = errno;
 			if (n == EAGAIN) {
-				break;
-			} else if (n == EAGAIN) {
+				return 0;
+			} else if (n == EINTR) {
 			} else {
-				printf("read error, n=%d\n", n);
-				break;
+				close_port();
+				return -1;
 			}
 		}
 	}
@@ -216,25 +225,129 @@ void close_port(void)
 	}
 }
 
+#elif defined(WINDOWS)
 
-void die(const char *format, ...)
+static HANDLE port_handle;
+
+int open_port(const char *name)
 {
-        va_list args;
-        va_start(args, format);
-        vfprintf(stderr, format, args);
-        exit(1);
+	COMMCONFIG port_cfg;
+	COMMTIMEOUTS timeouts;
+	DWORD len;
+	char buf[64];
+	int n;
+
+	if (strncmp(name, "COM", 3) == 0 && sscanf(name + 3, "%d", &n) == 1) {
+		snprintf(buf, sizeof(buf), "\\\\.\\COM%d", n);
+		name = buf;
+	}
+	port_handle = CreateFile(name, GENERIC_READ | GENERIC_WRITE,
+		0, 0, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+	if (port_handle == INVALID_HANDLE_VALUE) {
+		return 0;
+	}
+	len = sizeof(COMMCONFIG);
+	if (!GetCommConfig(port_handle, &port_cfg, &len)) {
+		CloseHandle(port_handle);
+		return 0;
+	}
+	port_cfg.dcb.BaudRate = 115200;
+	port_cfg.dcb.fBinary = TRUE;
+	port_cfg.dcb.fParity = FALSE;
+	port_cfg.dcb.fOutxCtsFlow = FALSE;
+	port_cfg.dcb.fOutxDsrFlow = FALSE;
+	port_cfg.dcb.fDtrControl = DTR_CONTROL_DISABLE;
+	port_cfg.dcb.fDsrSensitivity = FALSE;
+	port_cfg.dcb.fTXContinueOnXoff = TRUE;  // ???
+	port_cfg.dcb.fOutX = FALSE;
+	port_cfg.dcb.fInX = FALSE;
+	port_cfg.dcb.fErrorChar = FALSE;
+	port_cfg.dcb.fNull = FALSE;
+	port_cfg.dcb.fRtsControl = RTS_CONTROL_DISABLE;
+	port_cfg.dcb.fAbortOnError = FALSE;
+	port_cfg.dcb.ByteSize = 8;
+	port_cfg.dcb.Parity = NOPARITY;
+	port_cfg.dcb.StopBits = ONESTOPBIT;
+	if (!SetCommConfig(port_handle, &port_cfg, sizeof(COMMCONFIG))) {
+		CloseHandle(port_handle);
+		return 0;
+	}
+	if (!EscapeCommFunction(port_handle, CLRDTR | CLRRTS)) {
+		CloseHandle(port_handle);
+		return 0;
+	}
+        timeouts.ReadIntervalTimeout            = MAXDWORD;
+        timeouts.ReadTotalTimeoutMultiplier     = 0;
+        timeouts.ReadTotalTimeoutConstant       = 0;
+        timeouts.WriteTotalTimeoutMultiplier    = 0;
+        timeouts.WriteTotalTimeoutConstant      = 0;
+        if (!SetCommTimeouts(port_handle, &timeouts)) {
+		CloseHandle(port_handle);
+		return 0;
+	}
+	return 1;
 }
 
-void *malloc_or_die(size_t size)
+int read_serial_data(void)
 {
-        void *p;
+	COMSTAT st;
+	DWORD errmask=0, num_read, num_request;
+	OVERLAPPED ov;
+	unsigned char buf[256];
+	int r;
 
-        p = malloc(size);
-        if (!p) die("unable to allocate memory, %d bytes\n", (int)size);
-        return p;
+	while (1) {
+		if (!ClearCommError(port_handle, &errmask, &st)) return -1;
+		//printf("Read, %d requested, %lu buffered\n", count, st.cbInQue);
+		if (st.cbInQue <= 0) return 0;
+		// now do a ReadFile, now that we know how much we can read
+		// a blocking (non-overlapped) read would be simple, but win32
+		// is all-or-nothing on async I/O and we must have it enabled
+		// because it's the only way to get a timeout for WaitCommEvent
+		if (st.cbInQue < (DWORD)sizeof(buf)) {
+			num_request = st.cbInQue;
+		} else {
+			num_request = (DWORD)sizeof(buf);
+		}
+		ov.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+		if (ov.hEvent == NULL) {
+			close_port();
+			return -1;
+		}
+		ov.Internal = ov.InternalHigh = 0;
+		ov.Offset = ov.OffsetHigh = 0;
+		if (ReadFile(port_handle, buf, num_request, &num_read, &ov)) {
+			// this should usually be the result, since we asked for
+			// data we knew was already buffered
+			//printf("Read, immediate complete, num_read=%lu\n", num_read);
+			r = num_read;
+		} else {
+			if (GetLastError() == ERROR_IO_PENDING) {
+				if (GetOverlappedResult(port_handle, &ov, &num_read, TRUE)) {
+					//printf("Read, delayed, num_read=%lu\n", num_read);
+					r = num_read;
+				} else {
+					//printf("Read, delayed error\n");
+					r = -1;
+				}
+			} else {
+				//printf("Read, error\n");
+				r = -1;
+			}
+		}
+		CloseHandle(ov.hEvent);
+		if (r <= 0) break;
+		newdata(buf, r);
+	}
+        return r;
+}
+
+void close_port(void)
+{
+	CloseHandle(port_handle);
+	port_handle = NULL;
 }
 
 
 
-
-
+#endif

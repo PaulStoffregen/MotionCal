@@ -6,17 +6,27 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <string.h>
-#include <termios.h>
-#include <unistd.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <sys/select.h>
+#if defined(LINUX)
+  #include <termios.h>
+  #include <unistd.h>
+#elif defined(WINDOWS)
+  #include <windows.h>
+#endif
 #include <GL/gl.h>
 #include <GL/glu.h>
 
-#define PORT "/dev/ttyACM0"
+#if defined(LINUX)
+  #define PORT "/dev/ttyACM0"
+#elif defined(WINDOWS)
+  #define PORT "COM3"
+#elif defined(MACOSX)
+  #define PORT "/dev/cu.usbmodem123"
+#endif
+
 #define TIMEOUT_MSEC 40
 
 #define MAGBUFFSIZEX 14
@@ -44,10 +54,8 @@ typedef struct {
 } quat_t;
 extern quat_t current_orientation;
 
-extern void die(const char *format, ...) __attribute__ ((format (printf, 1, 2)));
-extern void *malloc_or_die(size_t size);
 extern int open_port(const char *name);
-extern void read_serial_data(void);
+extern int read_serial_data(void);
 extern void close_port(void);
 void visualize_init(void);
 void display_callback(void);
