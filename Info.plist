@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+<!-- Documentation for this format is at -->
+<!-- http://developer.apple.com/documentation/MacOSX/Conceptual/BPRuntimeConfig/Articles/ConfigFiles.html -->
+	<key>CFBundleDisplayName</key>
+	<string>IMUread</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.pjrc.teensy</string>
+	<key>CFBundleName</key>
+	<string>IMUread</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.234</string>
+	<key>LSHasLocalizedDisplayName</key>
+	<false/>
+	<key>NSHumanReadableCopyright</key>
+	<string>All Rights Reserved</string>
+	<key>NSAppleScriptEnabled</key>
+	<false/>
+	<key>CFBundleExecutable</key>
+	<string>gui</string>
+	<key>CFBundleIconFile</key>
+	<string>icon.icns</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>1.234</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>10.6.0</string>
+	<key>LSRequiresNativeExecution</key>
+	<true/>
+	<key>LSExecutableArchitectures</key>
+	<array>
+		<string>i386</string>
+	</array>
+</dict>
+</plist>

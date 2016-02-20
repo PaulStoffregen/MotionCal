@@ -1,8 +1,9 @@
-OS = LINUX
+#OS = LINUX
 #OS = MACOSX
-#OS = WINDOWS
+OS = WINDOWS
 
 ifeq ($(OS), LINUX)
+ALL = gui imuread
 CC = gcc
 CXX = g++
 CFLAGS = -O2 -Wall -D$(OS)
@@ -12,9 +13,16 @@ WXCONFIG = ~/wxwidgets/3.0.2.gtk2-opengl/bin/wx-config
 CLILIBS = -lglut -lGLU -lGL
 
 else ifeq ($(OS), MACOSX)
-#TODO: Macintosh build...
+ALL = gui.app
+CC = gcc-4.2
+CXX = g++-4.2
+CFLAGS = -O2 -Wall -D$(OS)
+CXXFLAGS = $(CFLAGS) `$(WXCONFIG) --cppflags`
+WXCONFIG = ~/wxwidgets/3.0.2.mac-opengl/bin/wx-config
+CLILIBS = -lglut -lGLU -lGL
 
 else ifeq ($(OS), WINDOWS)
+ALL = gui.exe
 CC = i686-w64-mingw32-gcc
 CXX = i686-w64-mingw32-g++
 CFLAGS = -O2 -Wall -D$(OS)
@@ -22,21 +30,31 @@ CXXFLAGS = $(CFLAGS) `$(WXCONFIG) --cppflags`
 LDFLAGS = -static -static-libgcc
 WXCONFIG = ~/wxwidgets/3.0.2.mingw-opengl/bin/wx-config
 CLILIBS = -lglut32 -lglu32 -lopengl32
+VERSION = 0.01
 
 endif
 
 
-all: gui imuread
+all: $(ALL)
 
 gui: gui.o visualize.o serialdata.o
 	$(CXX) -s $(CFLAGS) $(LDFLAGS) -o $@ $^ `$(WXCONFIG) --libs all,opengl`
-ifeq ($(OS), WINDOWS)
-	cp gui gui.exe
-endif
 
+gui.exe: gui
+	cp gui gui.exe
+
+gui.app: gui Info.plist
+	mkdir -p $@/Contents/MacOS
+	mkdir -p $@/Contents/Resources/English.lproj
+	sed "s/1.234/$(VERSION)/g" Info.plist > $@/Contents/Info.plist
+	/bin/echo -n 'APPL????' > $@/Contents/PkgInfo
+	cp $< $@/Contents/MacOS/
+	#cp icon.icns $@/Contents/Resources/
+	touch $@
 
 imuread: imuread.o visualize.o serialdata.o
 	$(CC) -s $(CFLAGS) $(LDFLAGS) -o $@ $^ $(CLILIBS)
 
 clean:
 	rm -f gui imuread *.o *.exe
+	rm -rf gui.app .DS_Store

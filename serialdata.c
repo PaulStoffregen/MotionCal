@@ -157,7 +157,7 @@ static void newdata(const unsigned char *data, int len)
 	}
 }
 
-#if defined(LINUX)
+#if defined(LINUX) || defined(MACOSX)
 
 static int portfd=-1;
 
@@ -347,7 +347,6 @@ void close_port(void)
 	CloseHandle(port_handle);
 	port_handle = NULL;
 }
-
 
 
 #endif

@@ -13,18 +13,26 @@
 #if defined(LINUX)
   #include <termios.h>
   #include <unistd.h>
+  #include <GL/gl.h>
+  #include <GL/glu.h>
 #elif defined(WINDOWS)
   #include <windows.h>
+  #include <GL/gl.h>
+  #include <GL/glu.h>
+#elif defined(MACOSX)
+  #include <termios.h>
+  #include <unistd.h>
+  #include <OpenGL/gl.h>
+  #include <OpenGL/glu.h>
 #endif
-#include <GL/gl.h>
-#include <GL/glu.h>
+
 
 #if defined(LINUX)
   #define PORT "/dev/ttyACM0"
 #elif defined(WINDOWS)
   #define PORT "COM3"
 #elif defined(MACOSX)
-  #define PORT "/dev/cu.usbmodem123"
+  #define PORT "/dev/cu.usbmodemfd132"
 #endif
 
 #define TIMEOUT_MSEC 40

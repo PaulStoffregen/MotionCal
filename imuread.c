@@ -1,4 +1,4 @@
-#if defined(LINUX) || defined(MACOSX)
+#if defined(LINUX)
 
 #include "imuread.h"
 #include <GL/glut.h> // sudo apt-get install xorg-dev libglu1-mesa-dev freeglut3-dev
