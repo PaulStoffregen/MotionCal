@@ -1,6 +1,6 @@
-#OS = LINUX
+OS = LINUX
 #OS = MACOSX
-OS = WINDOWS
+#OS = WINDOWS
 
 ifeq ($(OS), LINUX)
 ALL = gui imuread
@@ -10,7 +10,8 @@ CFLAGS = -O2 -Wall -D$(OS)
 CXXFLAGS = $(CFLAGS) `$(WXCONFIG) --cppflags`
 LDFLAGS =
 WXCONFIG = ~/wxwidgets/3.0.2.gtk2-opengl/bin/wx-config
-CLILIBS = -lglut -lGLU -lGL
+CLILIBS = -lglut -lGLU -lGL -lm
+MAKEFLAGS = --jobs=12
 
 else ifeq ($(OS), MACOSX)
 ALL = gui.app
@@ -19,7 +20,7 @@ CXX = g++-4.2
 CFLAGS = -O2 -Wall -D$(OS)
 CXXFLAGS = $(CFLAGS) `$(WXCONFIG) --cppflags`
 WXCONFIG = ~/wxwidgets/3.0.2.mac-opengl/bin/wx-config
-CLILIBS = -lglut -lGLU -lGL
+CLILIBS = -lglut -lGLU -lGL -lm
 
 else ifeq ($(OS), WINDOWS)
 ALL = gui.exe
@@ -29,7 +30,7 @@ CFLAGS = -O2 -Wall -D$(OS)
 CXXFLAGS = $(CFLAGS) `$(WXCONFIG) --cppflags`
 LDFLAGS = -static -static-libgcc
 WXCONFIG = ~/wxwidgets/3.0.2.mingw-opengl/bin/wx-config
-CLILIBS = -lglut32 -lglu32 -lopengl32
+CLILIBS = -lglut32 -lglu32 -lopengl32 -lm
 VERSION = 0.01
 
 endif
@@ -58,3 +59,10 @@ imuread: imuread.o visualize.o serialdata.o
 clean:
 	rm -f gui imuread *.o *.exe
 	rm -rf gui.app .DS_Store
+
+gui.o: gui.cpp gui.h imuread.h
+imuread.o: imuread.c imuread.h
+visualize.o: visualize.c imuread.h
+serialdata.o: serialdata.c imuread.h
+
+

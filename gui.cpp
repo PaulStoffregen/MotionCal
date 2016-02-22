@@ -54,7 +54,7 @@ void MyCanvas::InitGL()
 
 
 
-
+/*****************************************************************************/
 
 BEGIN_EVENT_TABLE(MyFrame,wxFrame)
 	EVT_MENU(wxID_ABOUT, MyFrame::OnAbout)
@@ -75,26 +75,36 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
 	menu = new wxMenu;
 	menu->Append(wxID_EXIT, wxT("Quit"));
 	menuBar->Append(menu, wxT("&File"));
-
 	menu = new wxMenu;
 	//item = new wxMenuItem(menu, ID_ABOUT, "About");
 	menu->Append(wxID_ABOUT, wxT("About"));
 	menuBar->Append(menu, wxT("&Help"));
-
 	SetMenuBar(menuBar);
+
+	wxBoxSizer *topsizer = new wxBoxSizer(wxHORIZONTAL);
+	wxBoxSizer *leftsizer = new wxStaticBoxSizer(wxVERTICAL, this, "Communication");
+	wxBoxSizer *middlesizer = new wxStaticBoxSizer(wxVERTICAL, this, "Magnetometer");
+	wxBoxSizer *rightsizer = new wxStaticBoxSizer(wxVERTICAL, this, "Gyroscope");
+
+	topsizer->Add(leftsizer, 0, wxALL, 5);
+	topsizer->Add(middlesizer, 1, wxALL | wxEXPAND, 5);
+	topsizer->Add(rightsizer, 0, wxALL, 5);
 
 	int gl_attrib[20] =
         { WX_GL_RGBA, WX_GL_MIN_RED, 1, WX_GL_MIN_GREEN, 1,
         WX_GL_MIN_BLUE, 1, WX_GL_DEPTH_SIZE, 1,
         WX_GL_DOUBLEBUFFER,
 	0};
-
-
 	m_canvas = new MyCanvas(this, wxID_ANY, gl_attrib);
+	m_canvas->SetMinSize(wxSize(340,340));
+
+	middlesizer->Add(m_canvas, 1, wxEXPAND | wxALL, 10);
+	topsizer->SetSizeHints(this);
+	SetSizerAndFit(topsizer);
 	Show(true);
 	Raise();
-	m_canvas->InitGL();
 
+	m_canvas->InitGL();
 	open_port(PORT);
 	m_timer = new wxTimer(this, ID_TIMER);
 	m_timer->Start(40, wxTIMER_CONTINUOUS);
@@ -126,6 +136,7 @@ MyFrame::~MyFrame(void)
 }
 
 
+/*****************************************************************************/
 
 
 IMPLEMENT_APP(MyApp)
@@ -141,7 +152,7 @@ bool MyApp::OnInit()
 
 	wxPoint pos(100, 100);
 
-	MyFrame *frame = new MyFrame(NULL, -1, wxT("Teensy"), pos, wxDefaultSize,
+	MyFrame *frame = new MyFrame(NULL, -1, wxT("IMU Read"), pos, wxSize(1160,660),
 		wxDEFAULT_FRAME_STYLE & ~(wxMAXIMIZE_BOX | wxRESIZE_BORDER));
 	frame->Show( true );
 	return true;

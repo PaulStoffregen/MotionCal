@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <string.h>
+#include <math.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -53,7 +54,7 @@ typedef struct {
 } magdata_t;
 extern magdata_t caldata[MAGBUFFSIZE];
 extern magdata_t hard_iron;
-extern magdata_t current_position;
+extern float soft_iron[9];
 typedef struct {
 	float w;
 	float x;

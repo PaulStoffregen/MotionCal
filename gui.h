@@ -46,13 +46,6 @@ public:
 
 private:
 	wxGLContext *m_glRC;
-
-	//GLfloat m_verts[MAXVERTS][3];
-	//GLfloat m_norms[MAXVERTS][3];
-	//GLint m_numverts;
-	//GLfloat m_xrot;
-	//GLfloat m_yrot;
-
 	wxDECLARE_NO_COPY_CLASS(MyCanvas);
 	wxDECLARE_EVENT_TABLE();
 };

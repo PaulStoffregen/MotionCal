@@ -14,9 +14,9 @@ void print_data(const char *name, const unsigned char *data, int len)
 
 static void packet_primary_data(const unsigned char *data)
 {
-	current_position.x = (float)((int16_t)((data[13] << 8) | data[12])) / 10.0f;
-	current_position.y = (float)((int16_t)((data[15] << 8) | data[14])) / 10.0f;
-	current_position.z = (float)((int16_t)((data[17] << 8) | data[16])) / 10.0f;
+	//current_position.x = (float)((int16_t)((data[13] << 8) | data[12])) / 10.0f;
+	//current_position.y = (float)((int16_t)((data[15] << 8) | data[14])) / 10.0f;
+	//current_position.z = (float)((int16_t)((data[17] << 8) | data[16])) / 10.0f;
 	current_orientation.w = (float)((int16_t)((data[25] << 8) | data[24])) / 30000.0f;
 	current_orientation.x = (float)((int16_t)((data[27] << 8) | data[26])) / 30000.0f;
 	current_orientation.y = (float)((int16_t)((data[29] << 8) | data[28])) / 30000.0f;
@@ -54,6 +54,14 @@ static void packet_magnetic_cal(const unsigned char *data)
 		cal->x = (float)x / 10.0f;
 		cal->y = (float)y / 10.0f;
 		cal->z = (float)z / 10.0f;
+	} else if (id == 2) {
+		soft_iron[0] = (float)x / 1000.0f;
+		soft_iron[4] = (float)y / 1000.0f;
+		soft_iron[8] = (float)z / 1000.0f;
+	} else if (id == 3) {
+		soft_iron[1] = soft_iron[3] = (float)x / 1000.0f; // finvW[X][Y]
+		soft_iron[2] = soft_iron[6] = (float)y / 1000.0f; // finvW[X][Z]
+		soft_iron[5] = soft_iron[7] = (float)z / 1000.0f; // finvW[Y][Z]
 		cal->valid = 1;
 	} else if (id >= 10 && id < MAGBUFFSIZE+10) {
 		newx = (float)x / 10.0f;

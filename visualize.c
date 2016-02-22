@@ -1,10 +1,24 @@
 #include "imuread.h"
 
 magdata_t caldata[MAGBUFFSIZE];
-magdata_t hard_iron;
-magdata_t current_position;
+magdata_t hard_iron = {0.0, 0.0, 0.0, 1};
+float soft_iron[9] = {1.0, 0.0, 0.0,  0.0, 1.0, 0.0,  0.0, 0.0, 1.0};
 quat_t current_orientation;
 
+
+
+static void apply_calibration(const magdata_t *in, magdata_t *out)
+{
+	float x, y, z;
+
+	x = in->x - hard_iron.x;
+	y = in->y - hard_iron.y;
+	z = in->z - hard_iron.z;
+	out->x = x * soft_iron[0] + y * soft_iron[1] + z * soft_iron[2];
+	out->y = x * soft_iron[3] + y * soft_iron[4] + z * soft_iron[5];
+	out->z = x * soft_iron[6] + y * soft_iron[7] + z * soft_iron[8];
+	out->valid = 1;
+}
 
 static void quad_to_rotation(const quat_t *quat, float *rmatrix)
 {
@@ -54,18 +68,23 @@ static GLuint spherelowreslist;
 
 void display_callback(void)
 {
-	int i;
+	static int updatenum=0;
+	int i, count=0;
 	float xscale, yscale, zscale;
 	float xoff, yoff, zoff;
 	float rotation[9];
 	magdata_t point, draw;
+	float magnitude[MAGBUFFSIZE];
+	float latitude[MAGBUFFSIZE]; // 0 to PI
+	float longitude[MAGBUFFSIZE]; // -PI to +PI
+	float sumx=0.0, sumy=0.0, sumz=0.0, summag=0.0;
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glColor3f(1, 0, 0);	// set current color to red
 
-	xscale = 0.05;
-	yscale = 0.05;
-	zscale = 0.05;
+	xscale = 0.06;
+	yscale = 0.06;
+	zscale = 0.06;
 	xoff = 0.0;
 	yoff = 0.0;
 	zoff = -7.0;
@@ -74,15 +93,18 @@ void display_callback(void)
 		quad_to_rotation(&current_orientation, rotation);
 		for (i=0; i < MAGBUFFSIZE; i++) {
 			if (caldata[i].valid) {
-				point.x = caldata[i].x - hard_iron.x;
-				point.y = caldata[i].y - hard_iron.y;
-				point.z = caldata[i].z - hard_iron.z;
-				point.valid = 1;
-				// TODO: apply soft iron cal
-
-				memcpy(&draw, &point, sizeof(draw));
+				apply_calibration(&caldata[i], &point);
+				sumx += point.x;
+				sumy += point.y;
+				sumz += point.z;
+				magnitude[i] = sqrtf(point.x * point.x +
+					point.y * point.y + point.z * point.z);
+				summag += magnitude[i];
+				longitude[i] = atan2f(point.y, point.x);
+				latitude[i] = atan2f(sqrtf(point.x * point.x +
+					point.y * point.y), point.z);
+				count++;
 				rotate(&point, &draw, rotation);
-
 				glPushMatrix();
 				glTranslatef(
 					draw.x * xscale + xoff,
@@ -94,11 +116,26 @@ void display_callback(void)
 				} else {
 					glCallList(spherelowreslist);
 				}
-
 				glPopMatrix();
 			}
 		}
 	}
+#if 0
+	if (updatenum++ == 500) {
+		for (i=0; i < MAGBUFFSIZE; i++) {
+			if (caldata[i].valid) {
+				printf("long: %6.2f  lat: %5.2f\n",
+					longitude[i] * 180.0 / M_PI,
+					latitude[i] * 180.0 / M_PI);
+			}
+		}
+		printf("count = %d\n", count);
+		printf("sum = %.2f %.2f %.2f\n", sumx, sumy, sumz);
+		printf("summag = %.2f  avg: %.2f\n", summag, summag / (float)count);
+		printf("exit here\n");
+		exit(1);
+	}
+#endif
 }
 
 void resize_callback(int width, int height)
