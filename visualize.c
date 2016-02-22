@@ -6,6 +6,47 @@ float soft_iron[9] = {1.0, 0.0, 0.0,  0.0, 1.0, 0.0,  0.0, 0.0, 1.0};
 quat_t current_orientation;
 
 
+// longitude = 0 to 2pi  (meaning 0 to 360 degrees)
+// latitude = -pi/2 to +pi/2  (meaning -90 to +90 degrees)
+// return 0 to 99 - which region on the sphere (100 of equal surface area)
+static int sphere_region(float longitude, float latitude)
+{
+	int region;
+
+	// https://etna.mcs.kent.edu/vol.25.2006/pp309-327.dir/pp309-327.html
+	// sphere equations....
+	//  area of unit sphere = 4*pi
+	//  area of unit sphere cap = 2*pi*h  h = cap height
+	//  lattitude of unit sphere cap = arcsin(1 - h)
+	if (latitude > 1.37046f /* 78.52 deg */) {
+		// arctic cap, 1 region
+		return 0;
+	} else if (latitude < -1.37046f /* -78.52 deg */) {
+		// antarctic cap, 1 region
+		return 99;
+	} else if (latitude > 0.74776f /* 42.84 deg */ || latitude < -0.74776f ) {
+		// temperate zones, 15 regions each
+		region = floorf(longitude * (float)(15.0 / (M_PI * 2.0)));
+		if (region < 0) region = 0;
+		else if (region > 14) region = 14;
+		if (latitude > 0.0) {
+			return region + 1; // 1 to 15
+		} else {
+			return region + 84; // 84 to 98
+		}
+	} else {
+		// tropic zones, 34 regions each
+		region = floorf(longitude * (float)(34.0 / (M_PI * 2.0)));
+		if (region < 0) region = 0;
+		else if (region > 33) region = 33;
+		if (latitude >= 0.0) {
+			return region + 16; // 16 to 49
+		} else {
+			return region + 50; // 50 to 83
+		}
+	}
+}
+
 
 static void apply_calibration(const magdata_t *in, magdata_t *out)
 {
@@ -78,9 +119,11 @@ void display_callback(void)
 	float latitude[MAGBUFFSIZE]; // 0 to PI
 	float longitude[MAGBUFFSIZE]; // -PI to +PI
 	float sumx=0.0, sumy=0.0, sumz=0.0, summag=0.0;
+	int spheredist[100];
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glColor3f(1, 0, 0);	// set current color to red
+	memset(spheredist, 0, sizeof(spheredist));
 
 	xscale = 0.06;
 	yscale = 0.06;
@@ -100,9 +143,10 @@ void display_callback(void)
 				magnitude[i] = sqrtf(point.x * point.x +
 					point.y * point.y + point.z * point.z);
 				summag += magnitude[i];
-				longitude[i] = atan2f(point.y, point.x);
+				longitude[i] = atan2f(point.y, point.x) + (float)M_PI;
 				latitude[i] = atan2f(sqrtf(point.x * point.x +
-					point.y * point.y), point.z);
+					point.y * point.y), point.z) - (float)(M_PI / 2.0);
+				spheredist[sphere_region(longitude[i], latitude[i])]++;
 				count++;
 				rotate(&point, &draw, rotation);
 				glPushMatrix();
@@ -124,10 +168,13 @@ void display_callback(void)
 	if (updatenum++ == 500) {
 		for (i=0; i < MAGBUFFSIZE; i++) {
 			if (caldata[i].valid) {
-				printf("long: %6.2f  lat: %5.2f\n",
+				printf("long: %6.2f  lat: %6.2f (%.2f)\n",
 					longitude[i] * 180.0 / M_PI,
-					latitude[i] * 180.0 / M_PI);
+					latitude[i] * 180.0 / M_PI, latitude[i]);
 			}
+		}
+		for (i=0; i < 100; i++) {
+			printf("sphere %d region: %d points\n", 1, spheredist[i]);
 		}
 		printf("count = %d\n", count);
 		printf("sum = %.2f %.2f %.2f\n", sumx, sumy, sumz);
