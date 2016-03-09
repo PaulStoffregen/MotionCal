@@ -12,7 +12,7 @@ void print_data(const char *name, const unsigned char *data, int len)
 	printf("\n");
 }
 
-static void packet_primary_data(const unsigned char *data)
+static int packet_primary_data(const unsigned char *data)
 {
 	//current_position.x = (float)((int16_t)((data[13] << 8) | data[12])) / 10.0f;
 	//current_position.y = (float)((int16_t)((data[15] << 8) | data[14])) / 10.0f;
@@ -36,9 +36,10 @@ static void packet_primary_data(const unsigned char *data)
 		current_orientation.z
 	);
 #endif
+	return 1;
 }
 
-static void packet_magnetic_cal(const unsigned char *data)
+static int packet_magnetic_cal(const unsigned char *data)
 {
 	int16_t id, x, y, z;
 	magdata_t *cal;
@@ -54,15 +55,18 @@ static void packet_magnetic_cal(const unsigned char *data)
 		cal->x = (float)x / 10.0f;
 		cal->y = (float)y / 10.0f;
 		cal->z = (float)z / 10.0f;
+		return 1;
 	} else if (id == 2) {
 		soft_iron[0] = (float)x / 1000.0f;
 		soft_iron[4] = (float)y / 1000.0f;
 		soft_iron[8] = (float)z / 1000.0f;
+		return 1;
 	} else if (id == 3) {
 		soft_iron[1] = soft_iron[3] = (float)x / 1000.0f; // finvW[X][Y]
 		soft_iron[2] = soft_iron[6] = (float)y / 1000.0f; // finvW[X][Z]
 		soft_iron[5] = soft_iron[7] = (float)z / 1000.0f; // finvW[Y][Z]
 		cal->valid = 1;
+		return 1;
 	} else if (id >= 10 && id < MAGBUFFSIZE+10) {
 		newx = (float)x / 10.0f;
 		newy = (float)y / 10.0f;
@@ -75,23 +79,25 @@ static void packet_magnetic_cal(const unsigned char *data)
 			cal->valid = 1;
 			printf("mag cal, id=%3d: %5d %5d %5d\n", id, x, y, z);
 		}
+		return 1;
 	}
+	return 0;
 }
 
-static void packet(const unsigned char *data, int len)
+static int packet(const unsigned char *data, int len)
 {
-	if (len <= 0) return;
+	if (len <= 0) return 0;
 	//print_data("packet", data, len);
 
 	if (data[0] == 1 && len == 34) {
-		packet_primary_data(data);
+		return packet_primary_data(data);
 	} else if (data[0] == 6 && len == 14) {
-		packet_magnetic_cal(data);
+		return packet_magnetic_cal(data);
 	}
-	// TODO: actually do something with the arriving data...
+	return 0;
 }
 
-static void packet_encoded(const unsigned char *data, int len)
+static int packet_encoded(const unsigned char *data, int len)
 {
 	const unsigned char *p;
 	unsigned char buf[256];
@@ -100,55 +106,62 @@ static void packet_encoded(const unsigned char *data, int len)
 	//printf("packet_encoded, len = %d\n", len);
 	p = memchr(data, 0x7D, len);
 	if (p == NULL) {
-		packet(data, len);
+		return packet(data, len);
 	} else {
 		//printf("** decoding necessary\n");
 		while (1) {
 			copylen = p - data;
 			if (copylen > 0) {
 				//printf("  copylen = %d\n", copylen);
-				// TODO: overflow check
+				if (buflen + copylen > sizeof(buf)) return 0;
 				memcpy(buf+buflen, data, copylen);
 				buflen += copylen;
 				data += copylen;
 				len -= copylen;
 			}
-			// TODO: overflow check
+			if (buflen + 1 > sizeof(buf)) return 0;
 			buf[buflen++] = (p[1] == 0x5E) ? 0x7E : 0x7D;
 			data += 2;
 			len -= 2;
 			if (len <= 0) break;
 			p = memchr(data, 0x7D, len);
 			if (p == NULL) {
-				// TODO: overflow check
+				if (buflen + len > sizeof(buf)) return 0;
 				memcpy(buf+buflen, data, len);
 				buflen += len;
 				break;
 			}
 		}
 		//printf("** decoded to %d\n", buflen);
-		packet(buf, buflen);
+		return packet(buf, buflen);
 	}
 }
 
-static void newdata(const unsigned char *data, int len)
+static int packet_parse(const unsigned char *data, int len)
 {
 	static unsigned char packetbuf[256];
 	static unsigned int packetlen=0;
 	const unsigned char *p;
 	int copylen;
+	int ret=0;
 
-	//print_data("newdata", data, len);
+	print_data("newdata", data, len);
 	while (len > 0) {
 		p = memchr(data, 0x7E, len);
 		if (p == NULL) {
-			// TODO: overflow check
+			if (packetlen + len > sizeof(packetbuf)) {
+				packetlen = 0;
+				return 0;  // would overflow buffer
+			}
 			memcpy(packetbuf+packetlen, data, len);
 			packetlen += len;
 			len = 0;
 		} else if (p > data) {
 			copylen = p - data;
-			// TODO: overflow check
+			if (packetlen + copylen > sizeof(packetbuf)) {
+				packetlen = 0;
+				return 0;  // would overflow buffer
+			}
 			memcpy(packetbuf+packetlen, data, copylen);
 			packet_encoded(packetbuf, packetlen+copylen);
 			packetlen = 0;
@@ -156,14 +169,22 @@ static void newdata(const unsigned char *data, int len)
 			len -= copylen + 1;
 		} else {
 			if (packetlen > 0) {
-				packet_encoded(packetbuf, packetlen);
+				if (packet_encoded(packetbuf, packetlen)) ret = 1;
 				packetlen = 0;
 			}
 			data++;
 			len--;
 		}
 	}
+	return ret;
 }
+
+static void newdata(const unsigned char *data, int len)
+{
+	packet_parse(data, len);
+	// TODO: ascii parse
+}
+
 
 #if defined(LINUX) || defined(MACOSX)
 
