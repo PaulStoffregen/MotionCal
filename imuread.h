@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <string.h>
+#include <ctype.h>
 #include <math.h>
 #include <errno.h>
 #include <sys/types.h>

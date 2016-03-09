@@ -145,7 +145,7 @@ static int packet_parse(const unsigned char *data, int len)
 	int copylen;
 	int ret=0;
 
-	print_data("newdata", data, len);
+	//print_data("packet_parse", data, len);
 	while (len > 0) {
 		p = memchr(data, 0x7E, len);
 		if (p == NULL) {
@@ -179,10 +179,72 @@ static int packet_parse(const unsigned char *data, int len)
 	return ret;
 }
 
+void raw_data(const int *data)
+{
+	//printf("raw_data: %d %d %d %d %d %d %d %d %d\n", data[0], data[1], data[2],
+		//data[3], data[4], data[5], data[6], data[7], data[8]);
+}
+
+static int ascii_parse(const unsigned char *data, int len)
+{
+	static int ascii_num=0, ascii_neg=0, ascii_count=0;
+	static int ascii_raw_data[9];
+	static unsigned int ascii_raw_data_count=0;
+	const char *p, *end;
+	int ret=0;
+
+	//print_data("ascii_parse", data, len);
+	end = (const char *)(data + len);
+	for (p = (const char *)data ; p < end; p++) {
+		if (*p == '-') {
+			//printf("ascii_parse negative\n");
+			if (ascii_count > 0) goto fail;
+			ascii_neg = 1;
+		} else if (isdigit(*p)) {
+			//printf("ascii_parse digit\n");
+			ascii_num = ascii_num * 10 + *p - '0';
+			ascii_count++;
+		} else if (*p == ',') {
+			//printf("ascii_parse comma, %d\n", ascii_num);
+			if (ascii_neg) ascii_num = -ascii_num;
+			if (ascii_num < -32768 && ascii_num > 32767) goto fail;
+			if (ascii_raw_data_count >= 8) goto fail;
+			ascii_raw_data[ascii_raw_data_count++] = ascii_num;
+			ascii_num = 0;
+			ascii_neg = 0;
+			ascii_count = 0;
+		} else if (*p == 13) {
+			//printf("ascii_parse newline\n");
+			if (ascii_neg) ascii_num = -ascii_num;
+			if (ascii_num < -32768 && ascii_num > 32767) goto fail;
+			if (ascii_raw_data_count != 8) goto fail;
+			ascii_raw_data[ascii_raw_data_count] = ascii_num;
+			raw_data(ascii_raw_data);
+			ret = 1;
+			ascii_raw_data_count = 0;
+			ascii_num = 0;
+			ascii_neg = 0;
+			ascii_count = 0;
+		} else if (*p == 10) {
+		} else {
+			goto fail;
+		}
+	}
+	return ret;
+fail:
+	ascii_raw_data_count = 0;
+	ascii_num = 0;
+	ascii_neg = 0;
+	ascii_count = 0;
+	return 0;
+}
+
+
 static void newdata(const unsigned char *data, int len)
 {
 	packet_parse(data, len);
-	// TODO: ascii parse
+	ascii_parse(data, len);
+	// TODO: learn which one and skip the other
 }
 
 
