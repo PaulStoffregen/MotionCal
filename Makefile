@@ -35,7 +35,7 @@ VERSION = 0.01
 
 endif
 
-OBJS = visualize.o serialdata.o rawdata.o
+OBJS = visualize.o serialdata.o rawdata.o magcal.o matrix.o
 
 all: $(ALL)
 

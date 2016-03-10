@@ -109,7 +109,7 @@ static GLuint spherelowreslist;
 
 void display_callback(void)
 {
-	static int updatenum=0;
+	//static int updatenum=0;
 	int i, count=0;
 	float xscale, yscale, zscale;
 	float xoff, yoff, zoff;
