@@ -35,10 +35,11 @@ VERSION = 0.01
 
 endif
 
+OBJS = visualize.o serialdata.o rawdata.o
 
 all: $(ALL)
 
-gui: gui.o visualize.o serialdata.o
+gui: gui.o $(OBJS)
 	$(CXX) -s $(CFLAGS) $(LDFLAGS) -o $@ $^ `$(WXCONFIG) --libs all,opengl`
 
 gui.exe: gui
@@ -53,7 +54,7 @@ gui.app: gui Info.plist
 	#cp icon.icns $@/Contents/Resources/
 	touch $@
 
-imuread: imuread.o visualize.o serialdata.o
+imuread: imuread.o $(OBJS)
 	$(CC) -s $(CFLAGS) $(LDFLAGS) -o $@ $^ $(CLILIBS)
 
 clean:
@@ -64,5 +65,6 @@ gui.o: gui.cpp gui.h imuread.h
 imuread.o: imuread.c imuread.h
 visualize.o: visualize.c imuread.h
 serialdata.o: serialdata.c imuread.h
+rawdata.o: rawdata.c imuread.h
 
 

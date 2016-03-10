@@ -179,11 +179,13 @@ static int packet_parse(const unsigned char *data, int len)
 	return ret;
 }
 
+/*
 void raw_data(const int *data)
 {
 	//printf("raw_data: %d %d %d %d %d %d %d %d %d\n", data[0], data[1], data[2],
 		//data[3], data[4], data[5], data[6], data[7], data[8]);
 }
+*/
 
 static int ascii_parse(const unsigned char *data, int len)
 {

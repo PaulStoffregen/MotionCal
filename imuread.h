@@ -52,6 +52,7 @@ typedef struct {
 	float y;
 	float z;
 	int valid;
+	float distsqsum;
 } magdata_t;
 extern magdata_t caldata[MAGBUFFSIZE];
 extern magdata_t hard_iron;
@@ -67,6 +68,7 @@ extern quat_t current_orientation;
 extern int open_port(const char *name);
 extern int read_serial_data(void);
 extern void close_port(void);
+void raw_data(const int *data);
 void visualize_init(void);
 void display_callback(void);
 void resize_callback(int width, int height);

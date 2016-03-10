@@ -1,7 +1,7 @@
 #include "imuread.h"
 
 magdata_t caldata[MAGBUFFSIZE];
-magdata_t hard_iron = {0.0, 0.0, 0.0, 1};
+magdata_t hard_iron = {0.0, 0.0, 80.0, 1};
 float soft_iron[9] = {1.0, 0.0, 0.0,  0.0, 1.0, 0.0,  0.0, 0.0, 1.0};
 quat_t current_orientation;
 
@@ -125,9 +125,9 @@ void display_callback(void)
 	glColor3f(1, 0, 0);	// set current color to red
 	memset(spheredist, 0, sizeof(spheredist));
 
-	xscale = 0.06;
-	yscale = 0.06;
-	zscale = 0.06;
+	xscale = 0.05;
+	yscale = 0.05;
+	zscale = 0.05;
 	xoff = 0.0;
 	yoff = 0.0;
 	zoff = -7.0;
