@@ -41,7 +41,6 @@ static void add_magcal_data(const int16_t *data)
 		}
 		i = minindex;
 	}
-	printf("i = %d\n", i);
 	// add it to the cal buffer
 	magcal.iBpFast[0][i] = data[6];
 	magcal.iBpFast[1][i] = data[7];
@@ -73,6 +72,7 @@ void raw_data(const int16_t *data)
 	//   fUpdateCalibration10EIG
 
 	add_magcal_data(data);
+	MagCal_Run();
 }
 
 

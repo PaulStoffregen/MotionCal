@@ -36,24 +36,97 @@
 
 #define FXOS8700_UTPERCOUNT  0.1f
 #define DEFAULTB 50.0F				// default geomagnetic field (uT)
-// vector components
-#define X 0
+#define X 0                         // vector components
 #define Y 1
 #define Z 2
-#define ONETHIRD 0.33333333F            // one third
-#define ONESIXTH 0.166666667F           // one sixth
+#define ONETHIRD 0.33333333F        // one third
+#define ONESIXTH 0.166666667F       // one sixth
+#define MINMEASUREMENTS4CAL 40      // minimum number of measurements for 4 element calibration
+#define MINMEASUREMENTS7CAL 100     // minimum number of measurements for 7 element calibration
+#define MINMEASUREMENTS10CAL 150    // minimum number of measurements for 10 element calibration
+#define MINBFITUT 22.0F             // minimum geomagnetic field B (uT) for valid calibration
+#define MAXBFITUT 67.0F             // maximum geomagnetic field B (uT) for valid calibration
+#define FITERRORAGINGSECS 7200.0F   // 2 hours: time for fit error to increase (age) by e=2.718
+
+static void fUpdateCalibration4INV(MagCalibration_t *MagCal);
+static void fUpdateCalibration7EIG(MagCalibration_t *MagCal);
+static void fUpdateCalibration10EIG(MagCalibration_t *MagCal);
+
+
+
+// run the magnetic calibration
+void MagCal_Run(void)
+{
+	int i, j;			// loop counters
+	int isolver;		// magnetic solver used
+	int count=0;
+	static int waitcount=0;
+
+	// only do the calibration occasionally
+	if (++waitcount < 20) return;
+	waitcount = 0;
+
+	// count number of data points
+	for (i=0; i < MAGBUFFSIZE; i++) {
+		if (magcal.valid[i]) count++;
+	}
+
+	if (count < MINMEASUREMENTS4CAL) return;
+
+	if (magcal.iValidMagCal) {
+		// age the existing fit error to avoid one good calibration locking out future updates
+		magcal.fFitErrorpc *= 1.02f;
+	}
+
+	// is enough data collected
+	if (count < MINMEASUREMENTS7CAL) {
+		isolver = 4;
+		fUpdateCalibration4INV(&magcal); // 4 element matrix inversion calibration
+	} else if (count < MINMEASUREMENTS10CAL) {
+		isolver = 7;
+		fUpdateCalibration7EIG(&magcal); // 7 element eigenpair calibration
+	} else {
+		isolver = 10;
+		fUpdateCalibration10EIG(&magcal); // 10 element eigenpair calibration
+	}
+
+	// the trial geomagnetic field must be in range (earth is 22uT to 67uT)
+	if ((magcal.ftrB >= MINBFITUT) && (magcal.ftrB <= MAXBFITUT))	{
+		// always accept the calibration if
+		//  1: no previous calibration exists
+		//  2: the calibration fit is reduced or
+		//  3: an improved solver was used giving a good trial calibration (4% or under)
+		if ((magcal.iValidMagCal == 0) ||
+				(magcal.ftrFitErrorpc <= magcal.fFitErrorpc) ||
+				((isolver > magcal.iValidMagCal) && (magcal.ftrFitErrorpc <= 4.0F))) {
+			// accept the new calibration solution
+			//printf("new magnetic cal, B=%.2f uT\n", magcal.ftrB);
+			magcal.iValidMagCal = isolver;
+			magcal.fFitErrorpc = magcal.ftrFitErrorpc;
+			magcal.fB = magcal.ftrB;
+			magcal.fFourBsq = 4.0F * magcal.ftrB * magcal.ftrB;
+			for (i = X; i <= Z; i++) {
+				magcal.fV[i] = magcal.ftrV[i];
+				for (j = X; j <= Z; j++) {
+					magcal.finvW[i][j] = magcal.ftrinvW[i][j];
+				}
+			}
+		}
+	}
+}
+
 
 
 // 4 element calibration using 4x4 matrix inverse
-void fUpdateCalibration4INV(MagCalibration_t *MagCal)
+static void fUpdateCalibration4INV(MagCalibration_t *MagCal)
 {
-	float fBp2;						// fBp[X]^2+fBp[Y]^2+fBp[Z]^2
-	float fSumBp4;					// sum of fBp2
-	float fscaling;					// set to FUTPERCOUNT * FMATRIXSCALING
-	float fE;						// error function = r^T.r
-	int16_t iOffset[3];				// offset to remove large DC hard iron bias in matrix
-	int16_t iCount;					// number of measurements counted
-	int8_t i, j, k;					// loop counters
+	float fBp2;					// fBp[X]^2+fBp[Y]^2+fBp[Z]^2
+	float fSumBp4;				// sum of fBp2
+	float fscaling;				// set to FUTPERCOUNT * FMATRIXSCALING
+	float fE;					// error function = r^T.r
+	int16_t iOffset[3];			// offset to remove large DC hard iron bias in matrix
+	int16_t iCount;				// number of measurements counted
+	int i, j, k;				// loop counters
 	
 	// working arrays for 4x4 matrix inversion
 	float *pfRows[4];
@@ -213,14 +286,14 @@ void fUpdateCalibration4INV(MagCalibration_t *MagCal)
 
 
 // 7 element calibration using direct eigen-decomposition
-void fUpdateCalibration7EIG(MagCalibration_t *MagCal)
+static void fUpdateCalibration7EIG(MagCalibration_t *MagCal)
 {
-	float det;								// matrix determinant
-	float fscaling;							// set to FUTPERCOUNT * FMATRIXSCALING
-	float ftmp;								// scratch variable
-	int16_t iOffset[3];						// offset to remove large DC hard iron bias
-	int16_t iCount;							// number of measurements counted
-	int8_t i, j, k, m, n;					// loop counters
+	float det;					// matrix determinant
+	float fscaling;				// set to FUTPERCOUNT * FMATRIXSCALING
+	float ftmp;					// scratch variable
+	int16_t iOffset[3];			// offset to remove large DC hard iron bias
+	int16_t iCount;				// number of measurements counted
+	int i, j, k, m, n;			// loop counters
 
 	// compute fscaling to reduce multiplications later
 	fscaling = FXOS8700_UTPERCOUNT / DEFAULTB;
@@ -346,14 +419,14 @@ void fUpdateCalibration7EIG(MagCalibration_t *MagCal)
 
 
 // 10 element calibration using direct eigen-decomposition
-void fUpdateCalibration10EIG(MagCalibration_t *MagCal)
+static void fUpdateCalibration10EIG(MagCalibration_t *MagCal)
 {
-	float det;								// matrix determinant
-	float fscaling;							// set to FUTPERCOUNT * FMATRIXSCALING
-	float ftmp;								// scratch variable
-	int16_t iOffset[3];						// offset to remove large DC hard iron bias in matrix
-	int16_t iCount;							// number of measurements counted
-	int8_t i, j, k, m, n;					// loop counters
+	float det;					// matrix determinant
+	float fscaling;				// set to FUTPERCOUNT * FMATRIXSCALING
+	float ftmp;					// scratch variable
+	int16_t iOffset[3];			// offset to remove large DC hard iron bias in matrix
+	int16_t iCount;				// number of measurements counted
+	int i, j, k, m, n;			// loop counters
 
 	// compute fscaling to reduce multiplications later
 	fscaling = FXOS8700_UTPERCOUNT / DEFAULTB;

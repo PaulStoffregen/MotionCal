@@ -37,9 +37,9 @@
   #define PORT "/dev/cu.usbmodemfd132"
 #endif
 
-#define TIMEOUT_MSEC 40
+#define TIMEOUT_MSEC 33
 
-#define MAGBUFFSIZE 500 // Freescale's lib needs at least 392
+#define MAGBUFFSIZE 450 // Freescale's lib needs at least 392
 
 #ifdef __cplusplus
 extern "C"{
@@ -67,6 +67,7 @@ void raw_data(const int16_t *data);
 void visualize_init(void);
 void display_callback(void);
 void resize_callback(int width, int height);
+void MagCal_Run(void);
 
 
 // magnetic calibration & buffer structure
@@ -93,10 +94,6 @@ typedef struct {
 } MagCalibration_t;
 
 extern MagCalibration_t magcal;
-
-void fUpdateCalibration4INV(MagCalibration_t *MagCal);
-void fUpdateCalibration7EIG(MagCalibration_t *MagCal);
-void fUpdateCalibration10EIG(MagCalibration_t *MagCal);
 
 
 void f3x3matrixAeqI(float A[][3]);
