@@ -39,9 +39,7 @@
 
 #define TIMEOUT_MSEC 40
 
-#define MAGBUFFSIZEX 14
-#define MAGBUFFSIZEY 28
-#define MAGBUFFSIZE (MAGBUFFSIZEX * MAGBUFFSIZEY)
+#define MAGBUFFSIZE 500 // Freescale's lib needs at least 392
 
 #ifdef __cplusplus
 extern "C"{
@@ -52,41 +50,27 @@ typedef struct {
 	float y;
 	float z;
 	int valid;
-	float distsqsum;
-} magdata_t;
-extern magdata_t caldata[MAGBUFFSIZE];
-extern magdata_t hard_iron;
-extern float soft_iron[9];
+} Point_t;
+
 typedef struct {
 	float w;
 	float x;
 	float y;
 	float z;
-} quat_t;
-extern quat_t current_orientation;
+} Quaternion_t;
+extern Quaternion_t current_orientation;
 
 extern int open_port(const char *name);
 extern int read_serial_data(void);
 extern void close_port(void);
-void raw_data(const int *data);
+void raw_data(const int16_t *data);
 void visualize_init(void);
 void display_callback(void);
 void resize_callback(int width, int height);
 
 
-
-// magnetometer measurement buffer
-struct MagneticBuffer
-{
-    int16_t iBpFast[3][MAGBUFFSIZEX][MAGBUFFSIZEY];   // uncalibrated magnetometer readings
-    int32_t index[MAGBUFFSIZEX][MAGBUFFSIZEY];        // array of time indices
-    int16_t tanarray[MAGBUFFSIZEX - 1];               // array of tangents of (100 * angle)
-    int16_t iMagBufferCount;                          // number of magnetometer readings
-};
-
-// magnetic calibration structure
-struct MagCalibration
-{
+// magnetic calibration & buffer structure
+typedef struct {
     float fV[3];                  // current hard iron offset x, y, z, (uT)
     float finvW[3][3];            // current inverse soft iron matrix
     float fB;                     // current geomagnetic field magnitude (uT)
@@ -102,14 +86,17 @@ struct MagCalibration
     float fmatB[10][10];          // scratch 10x10 matrix used by calibration algorithms
     float fvecA[10];              // scratch 10x1 vector used by calibration algorithms
     float fvecB[4];               // scratch 4x1 vector used by calibration algorithms
-    int8_t iCalInProgress;        // flag denoting that a calibration is in progress
-    int8_t iMagCalHasRun;         // flag denoting that at least one calibration has been launched
     int8_t iValidMagCal;          // integer value 0, 4, 7, 10 denoting both valid calibration and solver used
-};
+    int16_t iBpFast[3][MAGBUFFSIZE];   // uncalibrated magnetometer readings
+    int8_t  valid[MAGBUFFSIZE];        // 1=has data, 0=empty slot
+    int16_t iMagBufferCount;           // number of magnetometer readings
+} MagCalibration_t;
 
-void fUpdateCalibration4INV(struct MagCalibration *pthisMagCal, struct MagneticBuffer *pthisMagBuffer);
-void fUpdateCalibration7EIG(struct MagCalibration *pthisMagCal, struct MagneticBuffer *pthisMagBuffer);
-void fUpdateCalibration10EIG(struct MagCalibration *pthisMagCal, struct MagneticBuffer *pthisMagBuffer);
+extern MagCalibration_t magcal;
+
+void fUpdateCalibration4INV(MagCalibration_t *MagCal);
+void fUpdateCalibration7EIG(MagCalibration_t *MagCal);
+void fUpdateCalibration10EIG(MagCalibration_t *MagCal);
 
 
 void f3x3matrixAeqI(float A[][3]);

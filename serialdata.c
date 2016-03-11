@@ -42,8 +42,7 @@ static int packet_primary_data(const unsigned char *data)
 static int packet_magnetic_cal(const unsigned char *data)
 {
 	int16_t id, x, y, z;
-	magdata_t *cal;
-	float newx, newy, newz;
+	int n;
 
 	id = (data[7] << 8) | data[6];
 	x = (data[9] << 8) | data[8];
@@ -51,33 +50,32 @@ static int packet_magnetic_cal(const unsigned char *data)
 	z = (data[13] << 8) | data[12];
 
 	if (id == 1) {
-		cal = &hard_iron;
-		cal->x = (float)x / 10.0f;
-		cal->y = (float)y / 10.0f;
-		cal->z = (float)z / 10.0f;
+		magcal.fV[0] = (float)x * 0.1f;
+		magcal.fV[1] = (float)y * 0.1f;
+		magcal.fV[2] = (float)z * 0.1f;
 		return 1;
 	} else if (id == 2) {
-		soft_iron[0] = (float)x / 1000.0f;
-		soft_iron[4] = (float)y / 1000.0f;
-		soft_iron[8] = (float)z / 1000.0f;
+		magcal.finvW[0][0] = (float)x * 0.001f;
+		magcal.finvW[1][1] = (float)y * 0.001f;
+		magcal.finvW[2][2] = (float)z * 0.001f;
 		return 1;
 	} else if (id == 3) {
-		soft_iron[1] = soft_iron[3] = (float)x / 1000.0f; // finvW[X][Y]
-		soft_iron[2] = soft_iron[6] = (float)y / 1000.0f; // finvW[X][Z]
-		soft_iron[5] = soft_iron[7] = (float)z / 1000.0f; // finvW[Y][Z]
-		cal->valid = 1;
+		magcal.finvW[0][1] = (float)x / 1000.0f;
+		magcal.finvW[1][0] = (float)x / 1000.0f; // TODO: check this assignment
+		magcal.finvW[0][2] = (float)y / 1000.0f;
+		magcal.finvW[1][2] = (float)y / 1000.0f; // TODO: check this assignment
+		magcal.finvW[1][2] = (float)z / 1000.0f;
+		magcal.finvW[2][1] = (float)z / 1000.0f; // TODO: check this assignment
 		return 1;
 	} else if (id >= 10 && id < MAGBUFFSIZE+10) {
-		newx = (float)x / 10.0f;
-		newy = (float)y / 10.0f;
-		newz = (float)z / 10.0f;
-		cal = &caldata[id - 10];
-		if (!cal->valid || cal->x != newx || cal->y != newy || cal->z != newz) {
-			cal->x = newx;
-			cal->y = newy;
-			cal->z = newz;
-			cal->valid = 1;
-			printf("mag cal, id=%3d: %5d %5d %5d\n", id, x, y, z);
+		n = id - 10;
+		if (magcal.valid[n] == 0 || x != magcal.iBpFast[0][n]
+		  || y != magcal.iBpFast[1][n] || z != magcal.iBpFast[2][n]) {
+			magcal.iBpFast[0][n] = x;
+			magcal.iBpFast[1][n] = y;
+			magcal.iBpFast[2][n] = z;
+			magcal.valid[n] = 1;
+			printf("mag cal, n=%3d: %5d %5d %5d\n", n, x, y, z);
 		}
 		return 1;
 	}
@@ -179,18 +177,10 @@ static int packet_parse(const unsigned char *data, int len)
 	return ret;
 }
 
-/*
-void raw_data(const int *data)
-{
-	//printf("raw_data: %d %d %d %d %d %d %d %d %d\n", data[0], data[1], data[2],
-		//data[3], data[4], data[5], data[6], data[7], data[8]);
-}
-*/
-
 static int ascii_parse(const unsigned char *data, int len)
 {
 	static int ascii_num=0, ascii_neg=0, ascii_count=0;
-	static int ascii_raw_data[9];
+	static int16_t ascii_raw_data[9];
 	static unsigned int ascii_raw_data_count=0;
 	const char *p, *end;
 	int ret=0;

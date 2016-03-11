@@ -23,6 +23,12 @@ static void glut_display_callback(void)
 
 int main(int argc, char *argv[])
 {
+	memset(&magcal, 0, sizeof(magcal));
+	magcal.fV[2] = 80.0f;
+	magcal.finvW[0][0] = 1.0f;
+	magcal.finvW[1][1] = 1.0f;
+	magcal.finvW[2][2] = 1.0f;
+
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
 	glutInitWindowSize(600, 500);

@@ -66,5 +66,7 @@ imuread.o: imuread.c imuread.h
 visualize.o: visualize.c imuread.h
 serialdata.o: serialdata.c imuread.h
 rawdata.o: rawdata.c imuread.h
+magcal.o: magcal.c imuread.h
+matrix.o: matrix.c imuread.h
 
 

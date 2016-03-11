@@ -26,9 +26,11 @@
 //
 // This file contains magnetic calibration functions.  It is STRONGLY RECOMMENDED
 // that the casual developer NOT TOUCH THIS FILE.  The mathematics behind this file
-// is extremely complex, and it will be very easy (almost inevitable) that you screw it
-// up.
+// is extremely complex, and it will be very easy (almost inevitable) that you screw
+// it up.
 //
+// Haha - This file has been edited!  Please do not blame or pester NXP (formerly
+//        Freescale) about the "almost inevitable" issues!
 
 #include "imuread.h"
 
@@ -43,17 +45,15 @@
 
 
 // 4 element calibration using 4x4 matrix inverse
-void fUpdateCalibration4INV(struct MagCalibration *MagCal,
-		struct MagneticBuffer *MagBuffer)
+void fUpdateCalibration4INV(MagCalibration_t *MagCal)
 {
-	// local variables
 	float fBp2;						// fBp[X]^2+fBp[Y]^2+fBp[Z]^2
 	float fSumBp4;					// sum of fBp2
 	float fscaling;					// set to FUTPERCOUNT * FMATRIXSCALING
 	float fE;						// error function = r^T.r
 	int16_t iOffset[3];				// offset to remove large DC hard iron bias in matrix
 	int16_t iCount;					// number of measurements counted
-	int8_t i, j, k, l;				// loop counters
+	int8_t i, j, k;					// loop counters
 	
 	// working arrays for 4x4 matrix inversion
 	float *pfRows[4];
@@ -83,59 +83,57 @@ void fUpdateCalibration4INV(struct MagCalibration *MagCal,
 
 	// use from MINEQUATIONS up to MAXEQUATIONS entries from magnetic buffer to compute matrices
 	iCount = 0;
-	for (j = 0; j < MAGBUFFSIZEX; j++) {
-		for (k = 0; k < MAGBUFFSIZEY; k++) {
-			if (MagBuffer->index[j][k] != -1) {
-				// use first valid magnetic buffer entry as estimate (in counts) for offset
-				if (iCount == 0) {
-					for (l = X; l <= Z; l++) {
-						iOffset[l] = MagBuffer->iBpFast[l][j][k];
-					}
+	for (j = 0; j < MAGBUFFSIZE; j++) {
+		if (MagCal->valid[j]) {
+			// use first valid magnetic buffer entry as estimate (in counts) for offset
+			if (iCount == 0) {
+				for (k = X; k <= Z; k++) {
+					iOffset[k] = MagCal->iBpFast[k][j];
 				}
-
-				// store scaled and offset fBp[XYZ] in fvecA[0-2] and fBp[XYZ]^2 in fvecA[3-5]
-				for (l = X; l <= Z; l++) {
-					MagCal->fvecA[l] = (float)((int32_t)MagBuffer->iBpFast[l][j][k]
-						- (int32_t)iOffset[l]) * fscaling;
-					MagCal->fvecA[l + 3] = MagCal->fvecA[l] * MagCal->fvecA[l];
-				}
-
-				// calculate fBp2 = fBp[X]^2 + fBp[Y]^2 + fBp[Z]^2 (scaled uT^2)
-				fBp2 = MagCal->fvecA[3] + MagCal->fvecA[4] + MagCal->fvecA[5];
-
-				// accumulate fBp^4 over all measurements into fSumBp4=Y^T.Y
-				fSumBp4 += fBp2 * fBp2;
-
-				// now we have fBp2, accumulate fvecB[0-2] = X^T.Y =sum(fBp2.fBp[XYZ])
-				for (l = X; l <= Z; l++) {
-					MagCal->fvecB[l] += MagCal->fvecA[l] * fBp2;
-				}
-
-				//accumulate fvecB[3] = X^T.Y =sum(fBp2)
-				MagCal->fvecB[3] += fBp2;
-
-				// accumulate on and above-diagonal terms of fmatA = X^T.X ignoring fmatA[3][3]
-				MagCal->fmatA[0][0] += MagCal->fvecA[X + 3];
-				MagCal->fmatA[0][1] += MagCal->fvecA[X] * MagCal->fvecA[Y];
-				MagCal->fmatA[0][2] += MagCal->fvecA[X] * MagCal->fvecA[Z];
-				MagCal->fmatA[0][3] += MagCal->fvecA[X];
-				MagCal->fmatA[1][1] += MagCal->fvecA[Y + 3];
-				MagCal->fmatA[1][2] += MagCal->fvecA[Y] * MagCal->fvecA[Z];
-				MagCal->fmatA[1][3] += MagCal->fvecA[Y];
-				MagCal->fmatA[2][2] += MagCal->fvecA[Z + 3];
-				MagCal->fmatA[2][3] += MagCal->fvecA[Z];
-
-				// increment the counter for next iteration
-				iCount++;
 			}
+
+			// store scaled and offset fBp[XYZ] in fvecA[0-2] and fBp[XYZ]^2 in fvecA[3-5]
+			for (k = X; k <= Z; k++) {
+				MagCal->fvecA[k] = (float)((int32_t)MagCal->iBpFast[k][j]
+					- (int32_t)iOffset[k]) * fscaling;
+				MagCal->fvecA[k + 3] = MagCal->fvecA[k] * MagCal->fvecA[k];
+			}
+
+			// calculate fBp2 = fBp[X]^2 + fBp[Y]^2 + fBp[Z]^2 (scaled uT^2)
+			fBp2 = MagCal->fvecA[3] + MagCal->fvecA[4] + MagCal->fvecA[5];
+
+			// accumulate fBp^4 over all measurements into fSumBp4=Y^T.Y
+			fSumBp4 += fBp2 * fBp2;
+
+			// now we have fBp2, accumulate fvecB[0-2] = X^T.Y =sum(fBp2.fBp[XYZ])
+			for (k = X; k <= Z; k++) {
+				MagCal->fvecB[k] += MagCal->fvecA[k] * fBp2;
+			}
+
+			//accumulate fvecB[3] = X^T.Y =sum(fBp2)
+			MagCal->fvecB[3] += fBp2;
+
+			// accumulate on and above-diagonal terms of fmatA = X^T.X ignoring fmatA[3][3]
+			MagCal->fmatA[0][0] += MagCal->fvecA[X + 3];
+			MagCal->fmatA[0][1] += MagCal->fvecA[X] * MagCal->fvecA[Y];
+			MagCal->fmatA[0][2] += MagCal->fvecA[X] * MagCal->fvecA[Z];
+			MagCal->fmatA[0][3] += MagCal->fvecA[X];
+			MagCal->fmatA[1][1] += MagCal->fvecA[Y + 3];
+			MagCal->fmatA[1][2] += MagCal->fvecA[Y] * MagCal->fvecA[Z];
+			MagCal->fmatA[1][3] += MagCal->fvecA[Y];
+			MagCal->fmatA[2][2] += MagCal->fvecA[Z + 3];
+			MagCal->fmatA[2][3] += MagCal->fvecA[Z];
+
+			// increment the counter for next iteration
+			iCount++;
 		}
 	}
 
 	// set the last element of the measurement matrix to the number of buffer elements used
 	MagCal->fmatA[3][3] = (float) iCount;
 
-	// store the number of measurements accumulated (defensive programming, should never be needed)
-	MagBuffer->iMagBufferCount = iCount;
+	// store the number of measurements accumulated
+	MagCal->iMagBufferCount = iCount;
 
 	// use above diagonal elements of symmetric fmatA to set both fmatB and fmatA to X^T.X
 	for (i = 0; i < 4; i++) {
@@ -182,22 +180,23 @@ void fUpdateCalibration4INV(struct MagCalibration *MagCal,
 	}
 
 	// compute the hard iron vector (in uT but offset and scaled by FMATRIXSCALING)
-	for (l = X; l <= Z; l++) {
-		MagCal->ftrV[l] = 0.5F * MagCal->fvecA[l];
+	for (k = X; k <= Z; k++) {
+		MagCal->ftrV[k] = 0.5F * MagCal->fvecA[k];
 	}
 
 	// compute the scaled geomagnetic field strength B (in uT but scaled by FMATRIXSCALING)
 	MagCal->ftrB = sqrtf(MagCal->fvecA[3] + MagCal->ftrV[X] * MagCal->ftrV[X] +
 			MagCal->ftrV[Y] * MagCal->ftrV[Y] + MagCal->ftrV[Z] * MagCal->ftrV[Z]);
 
-	// calculate the trial fit error (percent) normalized to number of measurements and scaled geomagnetic field strength
-	MagCal->ftrFitErrorpc = sqrtf(fE / (float) MagBuffer->iMagBufferCount) * 100.0F /
+	// calculate the trial fit error (percent) normalized to number of measurements
+	// and scaled geomagnetic field strength
+	MagCal->ftrFitErrorpc = sqrtf(fE / (float) MagCal->iMagBufferCount) * 100.0F /
 			(2.0F * MagCal->ftrB * MagCal->ftrB);
 
 	// correct the hard iron estimate for FMATRIXSCALING and the offsets applied (result in uT)
-	for (l = X; l <= Z; l++) {
-		MagCal->ftrV[l] = MagCal->ftrV[l] * DEFAULTB
-			+ (float)iOffset[l] * FXOS8700_UTPERCOUNT;
+	for (k = X; k <= Z; k++) {
+		MagCal->ftrV[k] = MagCal->ftrV[k] * DEFAULTB
+			+ (float)iOffset[k] * FXOS8700_UTPERCOUNT;
 	}
 
 	// correct the geomagnetic field strength B to correct scaling (result in uT)
@@ -214,16 +213,14 @@ void fUpdateCalibration4INV(struct MagCalibration *MagCal,
 
 
 // 7 element calibration using direct eigen-decomposition
-void fUpdateCalibration7EIG(struct MagCalibration *MagCal,
-		struct MagneticBuffer *MagBuffer)
+void fUpdateCalibration7EIG(MagCalibration_t *MagCal)
 {
-	// local variables
 	float det;								// matrix determinant
 	float fscaling;							// set to FUTPERCOUNT * FMATRIXSCALING
 	float ftmp;								// scratch variable
 	int16_t iOffset[3];						// offset to remove large DC hard iron bias
 	int16_t iCount;							// number of measurements counted
-	int8_t i, j, k, l, m, n;					// loop counters
+	int8_t i, j, k, m, n;					// loop counters
 
 	// compute fscaling to reduce multiplications later
 	fscaling = FXOS8700_UTPERCOUNT / DEFAULTB;
@@ -240,47 +237,47 @@ void fUpdateCalibration7EIG(struct MagCalibration *MagCal,
 
 	// place from MINEQUATIONS to MAXEQUATIONS entries into product matrix fmatA
 	iCount = 0;
-	for (j = 0; j < MAGBUFFSIZEX; j++) {
-		for (k = 0; k < MAGBUFFSIZEY; k++) {
-			if (MagBuffer->index[j][k] != -1) {
-				// use first valid magnetic buffer entry as offset estimate (bit counts)
-				if (iCount == 0) {
-					for (l = X; l <= Z; l++) {
-						iOffset[l] = MagBuffer->iBpFast[l][j][k];
-					}
+	for (j = 0; j < MAGBUFFSIZE; j++) {
+		if (MagCal->valid[j]) {
+			// use first valid magnetic buffer entry as offset estimate (bit counts)
+			if (iCount == 0) {
+				for (k = X; k <= Z; k++) {
+					iOffset[k] = MagCal->iBpFast[k][j];
 				}
-
-				// apply the offset and scaling and store in fvecA
-				for (l = X; l <= Z; l++) {
-					MagCal->fvecA[l + 3] = (float)((int32_t)MagBuffer->iBpFast[l][j][k] - (int32_t)iOffset[l]) * fscaling;
-					MagCal->fvecA[l] = MagCal->fvecA[l + 3] * MagCal->fvecA[l + 3];
-				}
-
-				// accumulate the on-and above-diagonal terms of MagCal->fmatA=Sigma{fvecA^T * fvecA}
-				// with the exception of fmatA[6][6] which will sum to the number of measurements
-				// and remembering that fvecA[6] equals 1.0F
-				// update the right hand column [6] of fmatA except for fmatA[6][6]
-				for (m = 0; m < 6; m++) {
-					MagCal->fmatA[m][6] += MagCal->fvecA[m];
-				}
-				// update the on and above diagonal terms except for right hand column 6
-				for (m = 0; m < 6; m++) {
-					for (n = m; n < 6; n++) {
-						MagCal->fmatA[m][n] += MagCal->fvecA[m] * MagCal->fvecA[n];
-					}
-				}
-
-				// increment the measurement counter for the next iteration
-				iCount++;
 			}
+
+			// apply the offset and scaling and store in fvecA
+			for (k = X; k <= Z; k++) {
+				MagCal->fvecA[k + 3] = (float)((int32_t)MagCal->iBpFast[k][j]
+					- (int32_t)iOffset[k]) * fscaling;
+				MagCal->fvecA[k] = MagCal->fvecA[k + 3] * MagCal->fvecA[k + 3];
+			}
+
+			// accumulate the on-and above-diagonal terms of
+			// MagCal->fmatA=Sigma{fvecA^T * fvecA}
+			// with the exception of fmatA[6][6] which will sum to the number
+			// of measurements and remembering that fvecA[6] equals 1.0F
+			// update the right hand column [6] of fmatA except for fmatA[6][6]
+			for (m = 0; m < 6; m++) {
+				MagCal->fmatA[m][6] += MagCal->fvecA[m];
+			}
+			// update the on and above diagonal terms except for right hand column 6
+			for (m = 0; m < 6; m++) {
+				for (n = m; n < 6; n++) {
+					MagCal->fmatA[m][n] += MagCal->fvecA[m] * MagCal->fvecA[n];
+				}
+			}
+
+			// increment the measurement counter for the next iteration
+			iCount++;
 		}
 	}
 
 	// finally set the last element fmatA[6][6] to the number of measurements
 	MagCal->fmatA[6][6] = (float) iCount;
 
-	// store the number of measurements accumulated (defensive programming, should never be needed)
-	MagBuffer->iMagBufferCount = iCount;
+	// store the number of measurements accumulated
+	MagCal->iMagBufferCount = iCount;
 
 	// copy the above diagonal elements of fmatA to below the diagonal
 	for (m = 1; m < 7; m++) {
@@ -300,14 +297,14 @@ void fUpdateCalibration7EIG(struct MagCalibration *MagCal,
 		}
 	}
 
-	// set ellipsoid matrix A to the solution vector with smallest eigenvalue, compute its determinant
-	// and the hard iron offset (scaled and offset)
+	// set ellipsoid matrix A to the solution vector with smallest eigenvalue,
+	// compute its determinant and the hard iron offset (scaled and offset)
 	f3x3matrixAeqScalar(MagCal->fA, 0.0F);
 	det = 1.0F;
-	for (l = X; l <= Z; l++) {
-		MagCal->fA[l][l] = MagCal->fmatB[l][j];
-		det *= MagCal->fA[l][l];
-		MagCal->ftrV[l] = -0.5F * MagCal->fmatB[l + 3][j] / MagCal->fA[l][l];
+	for (k = X; k <= Z; k++) {
+		MagCal->fA[k][k] = MagCal->fmatB[k][j];
+		det *= MagCal->fA[k][k];
+		MagCal->ftrV[k] = -0.5F * MagCal->fmatB[k + 3][j] / MagCal->fA[k][k];
 	}
 
 	// negate A if it has negative determinant
@@ -317,43 +314,46 @@ void fUpdateCalibration7EIG(struct MagCalibration *MagCal,
 		det = -det;
 	}
 
-	// set ftmp to the square of the trial geomagnetic field strength B (counts times FMATRIXSCALING)
+	// set ftmp to the square of the trial geomagnetic field strength B
+	// (counts times FMATRIXSCALING)
 	ftmp = -MagCal->fmatB[6][j];
-	for (l = X; l <= Z; l++) {
-		ftmp += MagCal->fA[l][l] * MagCal->ftrV[l] * MagCal->ftrV[l];
+	for (k = X; k <= Z; k++) {
+		ftmp += MagCal->fA[k][k] * MagCal->ftrV[k] * MagCal->ftrV[k];
 	}
 
 	// calculate the trial normalized fit error as a percentage
-	MagCal->ftrFitErrorpc = 50.0F * sqrtf(fabs(MagCal->fvecA[j]) / (float) MagBuffer->iMagBufferCount) / fabs(ftmp);
+	MagCal->ftrFitErrorpc = 50.0F *
+		sqrtf(fabs(MagCal->fvecA[j]) / (float) MagCal->iMagBufferCount) / fabs(ftmp);
 
 	// normalize the ellipsoid matrix A to unit determinant
 	f3x3matrixAeqAxScalar(MagCal->fA, powf(det, -(ONETHIRD)));
 
-	// convert the geomagnetic field strength B into uT for normalized soft iron matrix A and normalize
+	// convert the geomagnetic field strength B into uT for normalized
+	// soft iron matrix A and normalize
 	MagCal->ftrB = sqrtf(fabs(ftmp)) * DEFAULTB * powf(det, -(ONESIXTH));
 
-	// compute trial invW from the square root of A also with normalized determinant and hard iron offset in uT
+	// compute trial invW from the square root of A also with normalized
+	// determinant and hard iron offset in uT
 	f3x3matrixAeqI(MagCal->ftrinvW);
-	for (l = X; l <= Z; l++) {
-		MagCal->ftrinvW[l][l] = sqrtf(fabs(MagCal->fA[l][l]));
-		MagCal->ftrV[l] = MagCal->ftrV[l] * DEFAULTB
-			+ (float)iOffset[l] * FXOS8700_UTPERCOUNT;
+	for (k = X; k <= Z; k++) {
+		MagCal->ftrinvW[k][k] = sqrtf(fabs(MagCal->fA[k][k]));
+		MagCal->ftrV[k] = MagCal->ftrV[k] * DEFAULTB + (float)iOffset[k] * FXOS8700_UTPERCOUNT;
 	}
-
-	return;
 }
 
+
+
+
+
 // 10 element calibration using direct eigen-decomposition
-void fUpdateCalibration10EIG(struct MagCalibration *MagCal,
-		struct MagneticBuffer *MagBuffer)
+void fUpdateCalibration10EIG(MagCalibration_t *MagCal)
 {
-	// local variables
 	float det;								// matrix determinant
 	float fscaling;							// set to FUTPERCOUNT * FMATRIXSCALING
 	float ftmp;								// scratch variable
 	int16_t iOffset[3];						// offset to remove large DC hard iron bias in matrix
 	int16_t iCount;							// number of measurements counted
-	int8_t i, j, k, l, m, n;					// loop counters
+	int8_t i, j, k, m, n;					// loop counters
 
 	// compute fscaling to reduce multiplications later
 	fscaling = FXOS8700_UTPERCOUNT / DEFAULTB;
@@ -370,53 +370,53 @@ void fUpdateCalibration10EIG(struct MagCalibration *MagCal,
 
 	// sum between MINEQUATIONS to MAXEQUATIONS entries into the 10x10 product matrix fmatA
 	iCount = 0;
-	for (j = 0; j < MAGBUFFSIZEX; j++) {
-		for (k = 0; k < MAGBUFFSIZEY; k++) {
-			if (MagBuffer->index[j][k] != -1) {
-				// use first valid magnetic buffer entry as estimate for offset to help solution (bit counts)
-				if (iCount == 0) {
-					for (l = X; l <= Z; l++) {
-						iOffset[l] = MagBuffer->iBpFast[l][j][k];
-					}
+	for (j = 0; j < MAGBUFFSIZE; j++) {
+		if (MagCal->valid[j] != -1) {
+			// use first valid magnetic buffer entry as estimate for offset
+			// to help solution (bit counts)
+			if (iCount == 0) {
+				for (k = X; k <= Z; k++) {
+					iOffset[k] = MagCal->iBpFast[k][j];
 				}
-
-				// apply the fixed offset and scaling and enter into fvecA[6-8]
-				for (l = X; l <= Z; l++) {
-					MagCal->fvecA[l + 6] = (float)((int32_t)MagBuffer->iBpFast[l][j][k] - (int32_t)iOffset[l]) * fscaling;
-				}
-
-				// compute measurement vector elements fvecA[0-5] from fvecA[6-8]
-				MagCal->fvecA[0] = MagCal->fvecA[6] * MagCal->fvecA[6];
-				MagCal->fvecA[1] = 2.0F * MagCal->fvecA[6] * MagCal->fvecA[7];
-				MagCal->fvecA[2] = 2.0F * MagCal->fvecA[6] * MagCal->fvecA[8];
-				MagCal->fvecA[3] = MagCal->fvecA[7] * MagCal->fvecA[7];
-				MagCal->fvecA[4] = 2.0F * MagCal->fvecA[7] * MagCal->fvecA[8];
-				MagCal->fvecA[5] = MagCal->fvecA[8] * MagCal->fvecA[8];
-
-				// accumulate the on-and above-diagonal terms of fmatA=Sigma{fvecA^T * fvecA}
-				// with the exception of fmatA[9][9] which equals the number of measurements
-				// update the right hand column [9] of fmatA[0-8][9] ignoring fmatA[9][9]
-				for (m = 0; m < 9; m++) {
-					MagCal->fmatA[m][9] += MagCal->fvecA[m];
-				}
-				// update the on and above diagonal terms of fmatA ignoring right hand column 9
-				for (m = 0; m < 9; m++) {
-					for (n = m; n < 9; n++) {
-						MagCal->fmatA[m][n] += MagCal->fvecA[m] * MagCal->fvecA[n];
-					}
-				}
-
-				// increment the measurement counter for the next iteration
-				iCount++;
 			}
+
+			// apply the fixed offset and scaling and enter into fvecA[6-8]
+			for (k = X; k <= Z; k++) {
+				MagCal->fvecA[k + 6] = (float)((int32_t)MagCal->iBpFast[k][j]
+					- (int32_t)iOffset[k]) * fscaling;
+			}
+
+			// compute measurement vector elements fvecA[0-5] from fvecA[6-8]
+			MagCal->fvecA[0] = MagCal->fvecA[6] * MagCal->fvecA[6];
+			MagCal->fvecA[1] = 2.0F * MagCal->fvecA[6] * MagCal->fvecA[7];
+			MagCal->fvecA[2] = 2.0F * MagCal->fvecA[6] * MagCal->fvecA[8];
+			MagCal->fvecA[3] = MagCal->fvecA[7] * MagCal->fvecA[7];
+			MagCal->fvecA[4] = 2.0F * MagCal->fvecA[7] * MagCal->fvecA[8];
+			MagCal->fvecA[5] = MagCal->fvecA[8] * MagCal->fvecA[8];
+
+			// accumulate the on-and above-diagonal terms of fmatA=Sigma{fvecA^T * fvecA}
+			// with the exception of fmatA[9][9] which equals the number of measurements
+			// update the right hand column [9] of fmatA[0-8][9] ignoring fmatA[9][9]
+			for (m = 0; m < 9; m++) {
+				MagCal->fmatA[m][9] += MagCal->fvecA[m];
+			}
+			// update the on and above diagonal terms of fmatA ignoring right hand column 9
+			for (m = 0; m < 9; m++) {
+				for (n = m; n < 9; n++) {
+					MagCal->fmatA[m][n] += MagCal->fvecA[m] * MagCal->fvecA[n];
+				}
+			}
+
+			// increment the measurement counter for the next iteration
+			iCount++;
 		}
 	}
 
 	// set the last element fmatA[9][9] to the number of measurements
 	MagCal->fmatA[9][9] = (float) iCount;
 
-	// store the number of measurements accumulated (defensive programming, should never be needed)
-	MagBuffer->iMagBufferCount = iCount;
+	// store the number of measurements accumulated
+	MagCal->iMagBufferCount = iCount;
 
 	// copy the above diagonal elements of symmetric product matrix fmatA to below the diagonal
 	for (m = 1; m < 10; m++) {
@@ -425,10 +425,12 @@ void fUpdateCalibration10EIG(struct MagCalibration *MagCal,
 		}
 	}
 
-	// set MagCal->fvecA to the unsorted eigenvalues and fmatB to the unsorted normalized eigenvectors of fmatA
+	// set MagCal->fvecA to the unsorted eigenvalues and fmatB to the unsorted
+	// normalized eigenvectors of fmatA
 	eigencompute(MagCal->fmatA, MagCal->fvecA, MagCal->fmatB, 10);
 
-	// set ellipsoid matrix A from elements of the solution vector column j with smallest eigenvalue
+	// set ellipsoid matrix A from elements of the solution vector column j with
+	// smallest eigenvalue
 	j = 0;
 	for (i = 1; i < 10; i++) {
 		if (MagCal->fvecA[i] < MagCal->fvecA[j]) {
@@ -457,12 +459,12 @@ void fUpdateCalibration10EIG(struct MagCalibration *MagCal,
 	f3x3matrixAeqInvSymB(MagCal->finvA, MagCal->fA);
 
 	// compute the trial hard iron vector in offset bit counts times FMATRIXSCALING
-	for (l = X; l <= Z; l++) {
-		MagCal->ftrV[l] = 0.0F;
+	for (k = X; k <= Z; k++) {
+		MagCal->ftrV[k] = 0.0F;
 		for (m = X; m <= Z; m++) {
-			MagCal->ftrV[l] += MagCal->finvA[l][m] * MagCal->fmatB[m + 6][j];
+			MagCal->ftrV[k] += MagCal->finvA[k][m] * MagCal->fmatB[m + 6][j];
 		}
-		MagCal->ftrV[l] *= -0.5F;
+		MagCal->ftrV[k] *= -0.5F;
 	}
 
 	// compute the trial geomagnetic field strength B in bit counts times FMATRIXSCALING
@@ -475,20 +477,21 @@ void fUpdateCalibration10EIG(struct MagCalibration *MagCal,
 
 	// calculate the trial normalized fit error as a percentage
 	MagCal->ftrFitErrorpc = 50.0F * sqrtf(
-		fabs(MagCal->fvecA[j]) / (float) MagBuffer->iMagBufferCount) /
+		fabs(MagCal->fvecA[j]) / (float) MagCal->iMagBufferCount) /
 		(MagCal->ftrB * MagCal->ftrB);
 
 	// correct for the measurement matrix offset and scaling and
 	// get the computed hard iron offset in uT
-	for (l = X; l <= Z; l++) {
-		MagCal->ftrV[l] = MagCal->ftrV[l] * DEFAULTB
-			+ (float)iOffset[l] * FXOS8700_UTPERCOUNT;
+	for (k = X; k <= Z; k++) {
+		MagCal->ftrV[k] = MagCal->ftrV[k] * DEFAULTB + (float)iOffset[k] * FXOS8700_UTPERCOUNT;
 	}
 
-	// convert the trial geomagnetic field strength B into uT for un-normalized soft iron matrix A
+	// convert the trial geomagnetic field strength B into uT for
+	// un-normalized soft iron matrix A
 	MagCal->ftrB *= DEFAULTB;
 
-	// normalize the ellipsoid matrix A to unit determinant and correct B by root of this multiplicative factor
+	// normalize the ellipsoid matrix A to unit determinant and
+	// correct B by root of this multiplicative factor
 	f3x3matrixAeqAxScalar(MagCal->fA, powf(det, -(ONETHIRD)));
 	MagCal->ftrB *= powf(det, -(ONESIXTH));
 
@@ -502,7 +505,8 @@ void fUpdateCalibration10EIG(struct MagCalibration *MagCal,
 	}
 	eigencompute(MagCal->fmatA, MagCal->fvecA, MagCal->fmatB, 3);
 
-	// set MagCal->fmatB to be eigenvectors . diag(sqrt(sqrt(eigenvalues))) = fmatB . diag(sqrt(sqrt(fvecA))
+	// set MagCal->fmatB to be eigenvectors . diag(sqrt(sqrt(eigenvalues))) =
+	//   fmatB . diag(sqrt(sqrt(fvecA))
 	for (j = 0; j < 3; j++) { // loop over columns j
 		ftmp = sqrtf(sqrtf(fabs(MagCal->fvecA[j])));
 		for (i = 0; i < 3; i++) { // loop over rows i
@@ -510,8 +514,8 @@ void fUpdateCalibration10EIG(struct MagCalibration *MagCal,
 		}
 	}
 
-	// set ftrinvW to eigenvectors * diag(sqrt(eigenvalues)) * eigenvectors^T
-	// = fmatB * fmatB^T = sqrt(fA) (guaranteed symmetric)
+	// set ftrinvW to eigenvectors * diag(sqrt(eigenvalues)) * eigenvectors^T =
+	//   fmatB * fmatB^T = sqrt(fA) (guaranteed symmetric)
 	// loop over rows
 	for (i = 0; i < 3; i++) {
 		// loop over on and above diagonal columns
@@ -526,5 +530,8 @@ void fUpdateCalibration10EIG(struct MagCalibration *MagCal,
 		}
 	}
 }
+
+
+
 
 

@@ -1,10 +1,8 @@
 #include "imuread.h"
 
-magdata_t caldata[MAGBUFFSIZE];
-magdata_t hard_iron = {0.0, 0.0, 80.0, 1};
-float soft_iron[9] = {1.0, 0.0, 0.0,  0.0, 1.0, 0.0,  0.0, 0.0, 1.0};
-quat_t current_orientation;
+MagCalibration_t magcal;
 
+Quaternion_t current_orientation;
 
 // longitude = 0 to 2pi  (meaning 0 to 360 degrees)
 // latitude = -pi/2 to +pi/2  (meaning -90 to +90 degrees)
@@ -48,20 +46,20 @@ static int sphere_region(float longitude, float latitude)
 }
 
 
-static void apply_calibration(const magdata_t *in, magdata_t *out)
+static void apply_calibration(int16_t rawx, int16_t rawy, int16_t rawz, Point_t *out)
 {
 	float x, y, z;
 
-	x = in->x - hard_iron.x;
-	y = in->y - hard_iron.y;
-	z = in->z - hard_iron.z;
-	out->x = x * soft_iron[0] + y * soft_iron[1] + z * soft_iron[2];
-	out->y = x * soft_iron[3] + y * soft_iron[4] + z * soft_iron[5];
-	out->z = x * soft_iron[6] + y * soft_iron[7] + z * soft_iron[8];
+	x = ((float)rawx * 0.1) - magcal.fV[0];
+	y = ((float)rawy * 0.1) - magcal.fV[1];
+	z = ((float)rawz * 0.1) - magcal.fV[2];
+	out->x = x * magcal.finvW[0][0] + y * magcal.finvW[0][1] + z * magcal.finvW[0][2];
+	out->y = x * magcal.finvW[1][0] + y * magcal.finvW[1][1] + z * magcal.finvW[1][2];
+	out->z = x * magcal.finvW[2][0] + y * magcal.finvW[2][1] + z * magcal.finvW[2][2];
 	out->valid = 1;
 }
 
-static void quad_to_rotation(const quat_t *quat, float *rmatrix)
+static void quad_to_rotation(const Quaternion_t *quat, float *rmatrix)
 {
 	float qx = quat->x;
 	float qy = quat->y;
@@ -79,7 +77,7 @@ static void quad_to_rotation(const quat_t *quat, float *rmatrix)
 	rmatrix[8] = 1.0f  - 2.0f * qx * qx - 2.0f * qy * qy;
 }
 
-static void rotate(const magdata_t *in, magdata_t *out, const float *rmatrix)
+static void rotate(const Point_t *in, Point_t *out, const float *rmatrix)
 {
 	if (out == NULL) return;
 	if (in == NULL || in->valid == 0) {
@@ -90,19 +88,9 @@ static void rotate(const magdata_t *in, magdata_t *out, const float *rmatrix)
 	out->x = in->x * rmatrix[0] + in->y * rmatrix[1] + in->z * rmatrix[2];
 	out->y = in->x * rmatrix[3] + in->y * rmatrix[4] + in->z * rmatrix[5];
 	out->z = in->x * rmatrix[6] + in->y * rmatrix[7] + in->z * rmatrix[8];
-	out->valid = 1;
 }
 
 
-/*
-typedef struct {
-	float x;
-	float y;
-	float z;
-	int valid;
-} magdata_t;
-magdata_t caldata[MAGBUFFSIZE];
-*/
 
 static GLuint spherelist;
 static GLuint spherelowreslist;
@@ -114,7 +102,7 @@ void display_callback(void)
 	float xscale, yscale, zscale;
 	float xoff, yoff, zoff;
 	float rotation[9];
-	magdata_t point, draw;
+	Point_t point, draw;
 	float magnitude[MAGBUFFSIZE];
 	float latitude[MAGBUFFSIZE]; // 0 to PI
 	float longitude[MAGBUFFSIZE]; // -PI to +PI
@@ -132,11 +120,15 @@ void display_callback(void)
 	yoff = 0.0;
 	zoff = -7.0;
 
-	if (hard_iron.valid) {
+	//if (hard_iron.valid) {
+	if (1) {
 		quad_to_rotation(&current_orientation, rotation);
 		for (i=0; i < MAGBUFFSIZE; i++) {
-			if (caldata[i].valid) {
-				apply_calibration(&caldata[i], &point);
+			//if (caldata[i].valid) {
+			if (magcal.valid[i]) {
+				//apply_calibration(&caldata[i], &point);
+				apply_calibration(magcal.iBpFast[0][i], magcal.iBpFast[1][i],
+					magcal.iBpFast[2][i], &point);
 				sumx += point.x;
 				sumy += point.y;
 				sumz += point.z;

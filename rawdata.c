@@ -13,27 +13,26 @@ void raw_data_reset(void)
 
 }
 
-//#undef MAGBUFFSIZE
-//#define MAGBUFFSIZE 6
-
-static void add_magcal_data(const int *data)
+static void add_magcal_data(const int16_t *data)
 {
-	float distsq, dx, dy, dz, magscale;
-	float minsum=1e30f;
+	int32_t dx, dy, dz;
+	uint64_t distsq, minsum=0xFFFFFFFFFFFFFFFF;
 	int i, j, minindex=0;
 
 	// first look for an unused caldata slot
 	for (i=0; i < MAGBUFFSIZE; i++) {
-		if (!caldata[i].valid) break;
+		if (!magcal.valid[i]) break;
 	}
 	// if no unused, find the ones closest to each other
 	if (i >= MAGBUFFSIZE) {
 		for (i=0; i < MAGBUFFSIZE; i++) {
 			for (j=i+1; j < MAGBUFFSIZE; j++) {
-				dx = caldata[i].x - caldata[j].x;
-				dy = caldata[i].y - caldata[j].y;
-				dz = caldata[i].z - caldata[j].z;
-				distsq = dx * dx + dy * dy + dz * dz;
+				dx = magcal.iBpFast[0][i] - magcal.iBpFast[0][j];
+				dy = magcal.iBpFast[1][i] - magcal.iBpFast[1][j];
+				dz = magcal.iBpFast[2][i] - magcal.iBpFast[2][j];
+				distsq = (int64_t)dx * (int64_t)dx;
+				distsq += (int64_t)dy * (int64_t)dy;
+				distsq += (int64_t)dz * (int64_t)dz;
 				if (distsq < minsum) {
 					minsum = distsq;
 					minindex = (random() & 1) ? i : j;
@@ -42,17 +41,16 @@ static void add_magcal_data(const int *data)
 		}
 		i = minindex;
 	}
+	printf("i = %d\n", i);
 	// add it to the cal buffer
-	magscale = 0.1f;
-	caldata[i].x = (float)data[6] * magscale;
-	caldata[i].y = (float)data[7] * magscale;
-	caldata[i].z = (float)data[8] * magscale;
-	caldata[i].valid = 1;
+	magcal.iBpFast[0][i] = data[6];
+	magcal.iBpFast[1][i] = data[7];
+	magcal.iBpFast[2][i] = data[8];
+	magcal.valid[i] = 1;
 }
 
 
-
-void raw_data(const int *data)
+void raw_data(const int16_t *data)
 {
 
 	//printf("raw_data: %d %d %d %d %d %d %d %d %d\n", data[0], data[1], data[2],
