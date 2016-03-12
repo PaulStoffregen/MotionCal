@@ -17,10 +17,10 @@ static int packet_primary_data(const unsigned char *data)
 	//current_position.x = (float)((int16_t)((data[13] << 8) | data[12])) / 10.0f;
 	//current_position.y = (float)((int16_t)((data[15] << 8) | data[14])) / 10.0f;
 	//current_position.z = (float)((int16_t)((data[17] << 8) | data[16])) / 10.0f;
-	current_orientation.w = (float)((int16_t)((data[25] << 8) | data[24])) / 30000.0f;
-	current_orientation.x = (float)((int16_t)((data[27] << 8) | data[26])) / 30000.0f;
-	current_orientation.y = (float)((int16_t)((data[29] << 8) | data[28])) / 30000.0f;
-	current_orientation.z = (float)((int16_t)((data[31] << 8) | data[30])) / 30000.0f;
+	current_orientation.q0 = (float)((int16_t)((data[25] << 8) | data[24])) / 30000.0f;
+	current_orientation.q1 = (float)((int16_t)((data[27] << 8) | data[26])) / 30000.0f;
+	current_orientation.q2 = (float)((int16_t)((data[29] << 8) | data[28])) / 30000.0f;
+	current_orientation.q3 = (float)((int16_t)((data[31] << 8) | data[30])) / 30000.0f;
 #if 0
 	printf("mag data, %5.2f %5.2f %5.2f\n",
 		current_position.x,

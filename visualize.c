@@ -61,11 +61,10 @@ static void apply_calibration(int16_t rawx, int16_t rawy, int16_t rawz, Point_t 
 
 static void quad_to_rotation(const Quaternion_t *quat, float *rmatrix)
 {
-	float qx = quat->x;
-	float qy = quat->y;
-	float qz = quat->z;
-	float qw = quat->w;
-
+	float qw = quat->q0;
+	float qx = quat->q1;
+	float qy = quat->q2;
+	float qz = quat->q3;
 	rmatrix[0] = 1.0f - 2.0f * qy * qy - 2.0f * qz * qz;
 	rmatrix[1] = 2.0f * qx * qy - 2.0f * qz * qw;
 	rmatrix[2] = 2.0f * qx * qz + 2.0f * qy * qw;
