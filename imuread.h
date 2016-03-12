@@ -49,7 +49,7 @@ typedef struct {
 	float x;
 	float y;
 	float z;
-	int valid;
+	//int valid;
 } Point_t;
 
 typedef struct {
@@ -63,8 +63,10 @@ extern Quaternion_t current_orientation;
 extern int open_port(const char *name);
 extern int read_serial_data(void);
 extern void close_port(void);
+void raw_data_reset(void);
 void raw_data(const int16_t *data);
 void visualize_init(void);
+void apply_calibration(int16_t rawx, int16_t rawy, int16_t rawz, Point_t *out);
 void display_callback(void);
 void resize_callback(int width, int height);
 void MagCal_Run(void);
@@ -108,42 +110,45 @@ void fmatrixAeqInvA(float *A[], int8_t iColInd[], int8_t iRowInd[], int8_t iPivo
 void fmatrixAeqRenormRotA(float A[][3]);
 
 
-#define OVERSAMPLE_RATIO 1
+#define OVERSAMPLE_RATIO 4
 
 // accelerometer sensor structure definition
+#define G_PER_COUNT 0.0001220703125F  // = 1/8192
 typedef struct
 {
-	int32_t iSumGpFast[3];    // sum of fast measurements
+	//int32_t iSumGpFast[3];    // sum of fast measurements
 	float fGpFast[3];       // fast (typically 200Hz) readings (g)
 	float fGp[3];           // slow (typically 25Hz) averaged readings (g)
-	float fgPerCount;       // initialized to FGPERCOUNT
-	int16_t iGpFast[3];       // fast (typically 200Hz) readings
-	int16_t iGp[3];           // slow (typically 25Hz) averaged readings (counts)
+	//float fgPerCount;       // initialized to FGPERCOUNT
+	//int16_t iGpFast[3];       // fast (typically 200Hz) readings
+	//int16_t iGp[3];           // slow (typically 25Hz) averaged readings (counts)
 } AccelSensor_t;
 
 // magnetometer sensor structure definition
+#define UT_PER_COUNT 0.1F
 typedef struct
 {
-	int32_t iSumBpFast[3];    // sum of fast measurements
-	float fBpFast[3];       // fast (typically 200Hz) raw readings (uT)
-	float fBp[3];           // slow (typically 25Hz) averaged raw readings (uT)
+	//int32_t iSumBpFast[3];    // sum of fast measurements
+	//float fBpFast[3];       // fast (typically 200Hz) raw readings (uT)
+	//float fBp[3];           // slow (typically 25Hz) averaged raw readings (uT)
 	float fBcFast[3];       // fast (typically 200Hz) calibrated readings (uT)
 	float fBc[3];           // slow (typically 25Hz) averaged calibrated readings (uT)
-	float fuTPerCount;      // initialized to FUTPERCOUNT
-	float fCountsPeruT;     // initialized to FCOUNTSPERUT
-	int16_t iBpFast[3];       // fast (typically 200Hz) raw readings (counts)
-	int16_t iBp[3];           // slow (typically 25Hz) averaged raw readings (counts)
-	int16_t iBc[3];           // slow (typically 25Hz) averaged calibrated readings (counts)
+	//float fuTPerCount;      // initialized to FUTPERCOUNT
+	//float fCountsPeruT;     // initialized to FCOUNTSPERUT
+	//int16_t iBpFast[3];       // fast (typically 200Hz) raw readings (counts)
+	//int16_t iBp[3];           // slow (typically 25Hz) averaged raw readings (counts)
+	//int16_t iBc[3];           // slow (typically 25Hz) averaged calibrated readings (counts)
 } MagSensor_t;
 
 // gyro sensor structure definition
+#define DEG_PER_SEC_PER_COUNT 0.0625F  // = 1/16
 typedef struct
 {
-	int32_t iSumYpFast[3];                    // sum of fast measurements
+	//int32_t iSumYpFast[3];                    // sum of fast measurements
 	float fYp[3];                           // raw gyro sensor output (deg/s)
-	float fDegPerSecPerCount;               // initialized to FDEGPERSECPERCOUNT
+	//float fDegPerSecPerCount;               // initialized to FDEGPERSECPERCOUNT
 	int16_t iYpFast[OVERSAMPLE_RATIO][3];     // fast (typically 200Hz) readings
-	int16_t iYp[3];                           // averaged gyro sensor output (counts)
+	//int16_t iYp[3];                           // averaged gyro sensor output (counts)
 } GyroSensor_t;
 
 
@@ -204,6 +209,11 @@ typedef struct
 	int16_t iFirstOrientationLock;	// denotes that 9DOF orientation has locked to 6DOF
 	int8_t resetflag;		// flag to request re-initialization on next pass
 } SV_9DOF_GBY_KALMAN_t;
+
+void fInit_9DOF_GBY_KALMAN(SV_9DOF_GBY_KALMAN_t *SV, int16_t iSensorFS, int16_t iOverSampleRatio);
+void fRun_9DOF_GBY_KALMAN(SV_9DOF_GBY_KALMAN_t *SV,
+	const AccelSensor_t *Accel, const MagSensor_t *Mag, const GyroSensor_t *Gyro,
+	const MagCalibration_t *MagCal, int16_t iOverSampleRatio);
 
 
 

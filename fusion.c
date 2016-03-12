@@ -62,12 +62,12 @@
 
 
 #define SENSORFS 100
-#define OVERSAMPLE_RATIO 1
+#define OVERSAMPLE_RATIO 4
 
 
 
 static void fqAeq1(Quaternion_t *pqA);
-static void feCompassNED(float fR[][3], float *pfDelta, float fBc[], float fGp[]);
+static void feCompassNED(float fR[][3], float *pfDelta, const float fBc[], const float fGp[]);
 static void fNEDAnglesDegFromRotationMatrix(float R[][3], float *pfPhiDeg,
 	float *pfTheDeg, float *pfPsiDeg, float *pfRhoDeg, float *pfChiDeg);
 static void fQuaternionFromRotationMatrix(float R[][3], Quaternion_t *pq);
@@ -159,8 +159,8 @@ void fInit_9DOF_GBY_KALMAN(SV_9DOF_GBY_KALMAN_t *SV, int16_t iSensorFS, int16_t 
 
 // 9DOF orientation function implemented using a 12 element Kalman filter
 void fRun_9DOF_GBY_KALMAN(SV_9DOF_GBY_KALMAN_t *SV,
-		AccelSensor_t *Accel, MagSensor_t *Mag, GyroSensor_t *Gyro,
-		MagCalibration_t *MagCal, int16_t iOverSampleRatio)
+		const AccelSensor_t *Accel, const MagSensor_t *Mag, const GyroSensor_t *Gyro,
+		const MagCalibration_t *MagCal, int16_t iOverSampleRatio)
 {	
 	// local scalars and arrays
 	float fopp, fadj, fhyp;						// opposite, adjacent and hypoteneuse
@@ -230,7 +230,8 @@ void fRun_9DOF_GBY_KALMAN(SV_9DOF_GBY_KALMAN_t *SV,
 	for (j = 0; j < iOverSampleRatio; j++) {
 		// compute the incremental fast (typically 200Hz) rotation vector rvec (deg)
 		for (i = X; i <= Z; i++) {
-			rvec[i] = (((float)Gyro->iYpFast[j][i] * Gyro->fDegPerSecPerCount) - SV->fbPl[i]) * SV->fFastdeltat;
+			rvec[i] = (((float)Gyro->iYpFast[j][i] * DEG_PER_SEC_PER_COUNT) - SV->fbPl[i])
+				* SV->fFastdeltat;
 		}
 
 		// compute the incremental quaternion fDeltaq from the rotation vector
@@ -812,7 +813,7 @@ void f3DOFMagnetometerMatrixNED(float fR[][3], float fBc[])
 
 
 // NED: 6DOF e-Compass function computing rotation matrix fR
-static void feCompassNED(float fR[][3], float *pfDelta, float fBc[], float fGp[])
+static void feCompassNED(float fR[][3], float *pfDelta, const float fBc[], const float fGp[])
 {
 	// local variables
 	float fmod[3];					// column moduli
@@ -868,8 +869,6 @@ static void feCompassNED(float fR[][3], float *pfDelta, float fBc[], float fGp[]
 	if (!((fmod[Z] == 0.0F) || (fmodBc == 0.0F))) {
 		*pfDelta = fasin_deg(fGdotBc / (fmod[Z] * fmodBc));
 	}
-
-	return;
 }
 
 

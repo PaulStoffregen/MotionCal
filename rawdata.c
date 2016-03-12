@@ -1,16 +1,22 @@
 #include "imuread.h"
 
 
-#define HIST_LEN 12
-uint32_t mag_histogram[3][65536];
-int raw_history[9][HIST_LEN];
-int raw_history_count=0;
-int raw_history_last=0;
+static int rawcount=OVERSAMPLE_RATIO;
+static AccelSensor_t accel;
+static MagSensor_t   mag;
+static GyroSensor_t  gyro;
+SV_9DOF_GBY_KALMAN_t fusionstate;
 
 void raw_data_reset(void)
 {
-
-
+	rawcount = OVERSAMPLE_RATIO;
+	fInit_9DOF_GBY_KALMAN(&fusionstate, 100, OVERSAMPLE_RATIO);
+	memset(&magcal, 0, sizeof(magcal));
+	magcal.fV[1] = 10.0f;
+	magcal.fV[2] = 80.0f;  // initial guess
+	magcal.finvW[0][0] = 1.0f;
+	magcal.finvW[1][1] = 1.0f;
+	magcal.finvW[2][2] = 1.0f;
 }
 
 static void add_magcal_data(const int16_t *data)
@@ -24,6 +30,8 @@ static void add_magcal_data(const int16_t *data)
 		if (!magcal.valid[i]) break;
 	}
 	// if no unused, find the ones closest to each other
+	// TODO: after reasonable sphere fit, we should retire older data
+	// and choose the ones farthest from the sphere's radius
 	if (i >= MAGBUFFSIZE) {
 		for (i=0; i < MAGBUFFSIZE; i++) {
 			for (j=i+1; j < MAGBUFFSIZE; j++) {
@@ -51,30 +59,64 @@ static void add_magcal_data(const int16_t *data)
 
 void raw_data(const int16_t *data)
 {
-
-	//printf("raw_data: %d %d %d %d %d %d %d %d %d\n", data[0], data[1], data[2],
-		//data[3], data[4], data[5], data[6], data[7], data[8]);
-	mag_histogram[0][data[6]+32786]++;
-	mag_histogram[1][data[7]+32786]++;
-	mag_histogram[2][data[8]+32786]++;
-
-	// RdSensData_Run (tasks.c) - reads 8 samples, sums, scales to sci units
-	// Fusion_Run (tasks.c)
-	//   fInvertMagCal - applies hard & soft iron cal
-	//     fV[3]       = hard iron -- ftrV[3]
-        //     finvW[3][3] = soft iron
-	//   iUpdateMagnetometerBuffer - adds data to buffer
-	//   fRun_6DOF_GY_KALMAN
-	//   fRun_9DOF_GBY_KALMAN
-	// MagCal_Run (tasks.c)
-	//   fUpdateCalibration4INV
-	//   fUpdateCalibration7EIG
-	//   fUpdateCalibration10EIG
+	float x, y, z, ratio;
+	Point_t point;
 
 	add_magcal_data(data);
 	MagCal_Run();
-}
 
+	if (rawcount >= OVERSAMPLE_RATIO) {
+		memset(&accel, 0, sizeof(accel));
+		memset(&mag, 0, sizeof(mag));
+		memset(&gyro, 0, sizeof(gyro));
+		rawcount = 0;
+	}
+	x = (float)data[0] * G_PER_COUNT;
+	y = (float)data[1] * G_PER_COUNT;
+	z = (float)data[2] * G_PER_COUNT;
+	accel.fGpFast[0] = x;
+	accel.fGpFast[1] = y;
+	accel.fGpFast[2] = y;
+	accel.fGp[0] += x;
+	accel.fGp[1] += y;
+	accel.fGp[2] += y;
+
+	x = (float)data[3] * DEG_PER_SEC_PER_COUNT;
+	y = (float)data[4] * DEG_PER_SEC_PER_COUNT;
+	z = (float)data[5] * DEG_PER_SEC_PER_COUNT;
+	gyro.fYp[0] += x;
+	gyro.fYp[1] += y;
+	gyro.fYp[2] += z;
+	gyro.iYpFast[rawcount][0] = data[3];
+	gyro.iYpFast[rawcount][1] = data[4];
+	gyro.iYpFast[rawcount][2] = data[5];
+
+	apply_calibration(data[6], data[7], data[8], &point);
+	mag.fBcFast[0] = point.x;
+	mag.fBcFast[1] = point.y;
+	mag.fBcFast[2] = point.z;
+	mag.fBc[0] += point.x;
+	mag.fBc[1] += point.y;
+	mag.fBc[2] += point.z;
+
+	rawcount++;
+	if (rawcount >= OVERSAMPLE_RATIO) {
+		ratio = 1.0f / (float)OVERSAMPLE_RATIO;
+		accel.fGp[0] *= ratio;
+		accel.fGp[1] *= ratio;
+		accel.fGp[2] *= ratio;
+		gyro.fYp[0] *= ratio;
+		gyro.fYp[1] *= ratio;
+		gyro.fYp[2] *= ratio;
+		mag.fBc[0] *= ratio;
+		mag.fBc[1] *= ratio;
+		mag.fBc[2] *= ratio;
+		fRun_9DOF_GBY_KALMAN(&fusionstate, &accel, &mag, &gyro,
+			&magcal, OVERSAMPLE_RATIO);
+
+		memcpy(&current_orientation, &(fusionstate.fqPl), sizeof(Quaternion_t));
+	}
+}
 
 
 

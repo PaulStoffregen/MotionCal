@@ -46,17 +46,16 @@ static int sphere_region(float longitude, float latitude)
 }
 
 
-static void apply_calibration(int16_t rawx, int16_t rawy, int16_t rawz, Point_t *out)
+void apply_calibration(int16_t rawx, int16_t rawy, int16_t rawz, Point_t *out)
 {
 	float x, y, z;
 
-	x = ((float)rawx * 0.1) - magcal.fV[0];
-	y = ((float)rawy * 0.1) - magcal.fV[1];
-	z = ((float)rawz * 0.1) - magcal.fV[2];
+	x = ((float)rawx * UT_PER_COUNT) - magcal.fV[0];
+	y = ((float)rawy * UT_PER_COUNT) - magcal.fV[1];
+	z = ((float)rawz * UT_PER_COUNT) - magcal.fV[2];
 	out->x = x * magcal.finvW[0][0] + y * magcal.finvW[0][1] + z * magcal.finvW[0][2];
 	out->y = x * magcal.finvW[1][0] + y * magcal.finvW[1][1] + z * magcal.finvW[1][2];
 	out->z = x * magcal.finvW[2][0] + y * magcal.finvW[2][1] + z * magcal.finvW[2][2];
-	out->valid = 1;
 }
 
 static void quad_to_rotation(const Quaternion_t *quat, float *rmatrix)
@@ -78,12 +77,6 @@ static void quad_to_rotation(const Quaternion_t *quat, float *rmatrix)
 
 static void rotate(const Point_t *in, Point_t *out, const float *rmatrix)
 {
-	if (out == NULL) return;
-	if (in == NULL || in->valid == 0) {
-		out->valid = 0;
-		out->x = out->y = out->z = 0;
-		return;
-	}
 	out->x = in->x * rmatrix[0] + in->y * rmatrix[1] + in->z * rmatrix[2];
 	out->y = in->x * rmatrix[3] + in->y * rmatrix[4] + in->z * rmatrix[5];
 	out->z = in->x * rmatrix[6] + in->y * rmatrix[7] + in->z * rmatrix[8];
