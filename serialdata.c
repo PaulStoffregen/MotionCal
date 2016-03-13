@@ -240,6 +240,7 @@ static void newdata(const unsigned char *data, int len)
 }
 
 
+
 #if defined(LINUX) || defined(MACOSX)
 
 static int portfd=-1;
@@ -298,6 +299,34 @@ int read_serial_data(void)
 			}
 		}
 	}
+}
+
+int write_serial_data(const void *ptr, int len)
+{
+	int n, written=0;
+	fd_set wfds;
+	struct timeval tv;
+
+	//printf("Write %d\n", len);
+	if (portfd < 0) return -1;
+	while (written < len) {
+		n = write(portfd, (const char *)ptr + written, len - written);
+		if (n < 0 && (errno == EAGAIN || errno == EINTR)) n = 0;
+		//printf("Write, n = %d\n", n);
+		if (n < 0) return -1;
+		if (n > 0) {
+			written += n;
+		} else {
+			tv.tv_sec = 0;
+			tv.tv_usec = 5000;
+			FD_ZERO(&wfds);
+			FD_SET(portfd, &wfds);
+			n = select(portfd+1, NULL, &wfds, NULL, &tv);
+			if (n < 0 && errno == EINTR) n = 1;
+			if (n <= 0) return -1;
+		}
+	}
+	return written;
 }
 
 void close_port(void)
@@ -423,6 +452,37 @@ int read_serial_data(void)
 		newdata(buf, r);
 	}
         return r;
+}
+
+int write_serial_data(const void *ptr, int len)
+{
+	DWORD num_written;
+	OVERLAPPED ov;
+	int r;
+
+	ov.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	if (ov.hEvent == NULL) return -1;
+	ov.Internal = ov.InternalHigh = 0;
+	ov.Offset = ov.OffsetHigh = 0;
+	if (WriteFile(port_handle, ptr, len, &num_written, &ov)) {
+		//printf("Write, immediate complete, num_written=%lu\n", num_written);
+		r = num_written;
+	} else {
+		if (GetLastError() == ERROR_IO_PENDING) {
+			if (GetOverlappedResult(port_handle, &ov, &num_written, TRUE)) {
+			//printf("Write, delayed, num_written=%lu\n", num_written);
+			r = num_written;
+			} else {
+				//printf("Write, delayed error\n");
+				r = -1;
+			}
+		} else {
+			//printf("Write, error\n");
+			r = -1;
+		}
+	};
+	CloseHandle(ov.hEvent);
+	return r;
 }
 
 void close_port(void)

@@ -75,7 +75,7 @@ void MagCal_Run(void)
 
 	if (magcal.iValidMagCal) {
 		// age the existing fit error to avoid one good calibration locking out future updates
-		magcal.fFitErrorpc *= 1.02f;
+		magcal.fFitErrorAge *= 1.01f;
 	}
 
 	// is enough data collected
@@ -97,12 +97,13 @@ void MagCal_Run(void)
 		//  2: the calibration fit is reduced or
 		//  3: an improved solver was used giving a good trial calibration (4% or under)
 		if ((magcal.iValidMagCal == 0) ||
-				(magcal.ftrFitErrorpc <= magcal.fFitErrorpc) ||
+				(magcal.ftrFitErrorpc <= magcal.fFitErrorAge) ||
 				((isolver > magcal.iValidMagCal) && (magcal.ftrFitErrorpc <= 4.0F))) {
 			// accept the new calibration solution
 			//printf("new magnetic cal, B=%.2f uT\n", magcal.ftrB);
 			magcal.iValidMagCal = isolver;
 			magcal.fFitErrorpc = magcal.ftrFitErrorpc;
+			magcal.fFitErrorAge = magcal.ftrFitErrorpc;
 			magcal.fB = magcal.ftrB;
 			magcal.fFourBsq = 4.0F * magcal.ftrB * magcal.ftrB;
 			for (i = X; i <= Z; i++) {

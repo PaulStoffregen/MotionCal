@@ -62,9 +62,11 @@ extern Quaternion_t current_orientation;
 
 extern int open_port(const char *name);
 extern int read_serial_data(void);
+extern int write_serial_data(const void *ptr, int len);
 extern void close_port(void);
 void raw_data_reset(void);
 void raw_data(const int16_t *data);
+int send_calibration(void);
 void visualize_init(void);
 void apply_calibration(int16_t rawx, int16_t rawy, int16_t rawz, Point_t *out);
 void display_callback(void);
@@ -79,6 +81,7 @@ typedef struct {
     float fB;                     // current geomagnetic field magnitude (uT)
     float fFourBsq;               // current 4*B*B (uT^2)
     float fFitErrorpc;            // current fit error %
+    float fFitErrorAge;           // current fit error % (grows automatically with age)
     float ftrV[3];                // trial value of hard iron offset z, y, z (uT)
     float ftrinvW[3][3];          // trial inverse soft iron matrix size
     float ftrB;                   // trial value of geomagnetic field magnitude in uT

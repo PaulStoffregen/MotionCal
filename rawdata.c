@@ -12,11 +12,12 @@ void raw_data_reset(void)
 	rawcount = OVERSAMPLE_RATIO;
 	fInit_9DOF_GBY_KALMAN(&fusionstate, 100, OVERSAMPLE_RATIO);
 	memset(&magcal, 0, sizeof(magcal));
-	magcal.fV[1] = 10.0f;
 	magcal.fV[2] = 80.0f;  // initial guess
 	magcal.finvW[0][0] = 1.0f;
 	magcal.finvW[1][1] = 1.0f;
 	magcal.finvW[2][2] = 1.0f;
+	magcal.fFitErrorpc = 100.0f;
+	magcal.fFitErrorAge = 100.0f;
 }
 
 static void add_magcal_data(const int16_t *data)
@@ -118,5 +119,58 @@ void raw_data(const int16_t *data)
 	}
 }
 
+static uint16_t crc16(uint16_t crc, uint8_t data)
+{
+        unsigned int i;
 
+        crc ^= data;
+        for (i = 0; i < 8; ++i) {
+                if (crc & 1) {
+                        crc = (crc >> 1) ^ 0xA001;
+                } else {
+                        crc = (crc >> 1);
+                }
+        }
+        return crc;
+}
 
+static uint8_t * copy_lsb_first(uint8_t *dst, float f)
+{
+	union {
+		float f;
+		uint32_t n;
+	} data;
+
+	data.f = f;
+	*dst++ = data.n;
+	*dst++ = data.n >> 8;
+	*dst++ = data.n >> 16;
+	*dst++ = data.n >> 24;
+	return dst;
+}
+
+int send_calibration(void)
+{
+	uint8_t *p, buf[52];
+	uint16_t crc;
+	int i, j;
+
+	p = buf;
+	*p++ = 117; // 2 byte signature
+	*p++ = 84;
+	for (i=0; i < 3; i++) {
+		p = copy_lsb_first(p, magcal.fV[i]); // 12 bytes offset/hardiron
+	}
+	for (i=0; i < 3; i++) {
+		for (j=0; j < 3; j++) {
+			p = copy_lsb_first(p, magcal.finvW[i][j]); // 36 bytes softiron
+		}
+	}
+	crc = 0xFFFF;
+	for (i=0; i < 50; i++) {
+		crc = crc16(crc, buf[i]);
+	}
+	*p++ = crc;   // 2 byte crc check
+	*p++ = crc >> 8;
+	return write_serial_data(buf, 52);
+}
