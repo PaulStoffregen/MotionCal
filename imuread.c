@@ -23,18 +23,18 @@ static void glut_display_callback(void)
 
 static void glut_keystroke_callback(unsigned char ch, int x, int y)
 {
-	if (magcal.fFitErrorpc > 9.0) {
+	if (magcal.FitError > 9.0) {
 		printf("Poor Calibration: ");
-		printf("soft iron fit error = %.1f%%\n", magcal.fFitErrorpc);
+		printf("soft iron fit error = %.1f%%\n", magcal.FitError);
 		return;
 	}
-	printf("Magnetic Calibration:   (%.1f%% fit error)\n", magcal.fFitErrorpc);
+	printf("Magnetic Calibration:   (%.1f%% fit error)\n", magcal.FitError);
 	printf("   %7.2f   %6.3f %6.3f %6.3f\n",
-		magcal.fV[0], magcal.finvW[0][0], magcal.finvW[0][1], magcal.finvW[0][2]);
+		magcal.V[0], magcal.invW[0][0], magcal.invW[0][1], magcal.invW[0][2]);
 	printf("   %7.2f   %6.3f %6.3f %6.3f\n",
-		magcal.fV[1], magcal.finvW[1][0], magcal.finvW[1][1], magcal.finvW[1][2]);
+		magcal.V[1], magcal.invW[1][0], magcal.invW[1][1], magcal.invW[1][2]);
 	printf("   %7.2f   %6.3f %6.3f %6.3f\n",
-		magcal.fV[2], magcal.finvW[2][0], magcal.finvW[2][1], magcal.finvW[2][2]);
+		magcal.V[2], magcal.invW[2][0], magcal.invW[2][1], magcal.invW[2][2]);
 	send_calibration();
 }
 

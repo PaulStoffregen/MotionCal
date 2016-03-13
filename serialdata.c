@@ -50,30 +50,30 @@ static int packet_magnetic_cal(const unsigned char *data)
 	z = (data[13] << 8) | data[12];
 
 	if (id == 1) {
-		magcal.fV[0] = (float)x * 0.1f;
-		magcal.fV[1] = (float)y * 0.1f;
-		magcal.fV[2] = (float)z * 0.1f;
+		magcal.V[0] = (float)x * 0.1f;
+		magcal.V[1] = (float)y * 0.1f;
+		magcal.V[2] = (float)z * 0.1f;
 		return 1;
 	} else if (id == 2) {
-		magcal.finvW[0][0] = (float)x * 0.001f;
-		magcal.finvW[1][1] = (float)y * 0.001f;
-		magcal.finvW[2][2] = (float)z * 0.001f;
+		magcal.invW[0][0] = (float)x * 0.001f;
+		magcal.invW[1][1] = (float)y * 0.001f;
+		magcal.invW[2][2] = (float)z * 0.001f;
 		return 1;
 	} else if (id == 3) {
-		magcal.finvW[0][1] = (float)x / 1000.0f;
-		magcal.finvW[1][0] = (float)x / 1000.0f; // TODO: check this assignment
-		magcal.finvW[0][2] = (float)y / 1000.0f;
-		magcal.finvW[1][2] = (float)y / 1000.0f; // TODO: check this assignment
-		magcal.finvW[1][2] = (float)z / 1000.0f;
-		magcal.finvW[2][1] = (float)z / 1000.0f; // TODO: check this assignment
+		magcal.invW[0][1] = (float)x / 1000.0f;
+		magcal.invW[1][0] = (float)x / 1000.0f; // TODO: check this assignment
+		magcal.invW[0][2] = (float)y / 1000.0f;
+		magcal.invW[1][2] = (float)y / 1000.0f; // TODO: check this assignment
+		magcal.invW[1][2] = (float)z / 1000.0f;
+		magcal.invW[2][1] = (float)z / 1000.0f; // TODO: check this assignment
 		return 1;
 	} else if (id >= 10 && id < MAGBUFFSIZE+10) {
 		n = id - 10;
-		if (magcal.valid[n] == 0 || x != magcal.iBpFast[0][n]
-		  || y != magcal.iBpFast[1][n] || z != magcal.iBpFast[2][n]) {
-			magcal.iBpFast[0][n] = x;
-			magcal.iBpFast[1][n] = y;
-			magcal.iBpFast[2][n] = z;
+		if (magcal.valid[n] == 0 || x != magcal.BpFast[0][n]
+		  || y != magcal.BpFast[1][n] || z != magcal.BpFast[2][n]) {
+			magcal.BpFast[0][n] = x;
+			magcal.BpFast[1][n] = y;
+			magcal.BpFast[2][n] = z;
 			magcal.valid[n] = 1;
 			printf("mag cal, n=%3d: %5d %5d %5d\n", n, x, y, z);
 		}

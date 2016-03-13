@@ -50,12 +50,12 @@ void apply_calibration(int16_t rawx, int16_t rawy, int16_t rawz, Point_t *out)
 {
 	float x, y, z;
 
-	x = ((float)rawx * UT_PER_COUNT) - magcal.fV[0];
-	y = ((float)rawy * UT_PER_COUNT) - magcal.fV[1];
-	z = ((float)rawz * UT_PER_COUNT) - magcal.fV[2];
-	out->x = x * magcal.finvW[0][0] + y * magcal.finvW[0][1] + z * magcal.finvW[0][2];
-	out->y = x * magcal.finvW[1][0] + y * magcal.finvW[1][1] + z * magcal.finvW[1][2];
-	out->z = x * magcal.finvW[2][0] + y * magcal.finvW[2][1] + z * magcal.finvW[2][2];
+	x = ((float)rawx * UT_PER_COUNT) - magcal.V[0];
+	y = ((float)rawy * UT_PER_COUNT) - magcal.V[1];
+	z = ((float)rawz * UT_PER_COUNT) - magcal.V[2];
+	out->x = x * magcal.invW[0][0] + y * magcal.invW[0][1] + z * magcal.invW[0][2];
+	out->y = x * magcal.invW[1][0] + y * magcal.invW[1][1] + z * magcal.invW[1][2];
+	out->z = x * magcal.invW[2][0] + y * magcal.invW[2][1] + z * magcal.invW[2][2];
 }
 
 static void quad_to_rotation(const Quaternion_t *quat, float *rmatrix)
@@ -119,8 +119,8 @@ void display_callback(void)
 			//if (caldata[i].valid) {
 			if (magcal.valid[i]) {
 				//apply_calibration(&caldata[i], &point);
-				apply_calibration(magcal.iBpFast[0][i], magcal.iBpFast[1][i],
-					magcal.iBpFast[2][i], &point);
+				apply_calibration(magcal.BpFast[0][i], magcal.BpFast[1][i],
+					magcal.BpFast[2][i], &point);
 				sumx += point.x;
 				sumy += point.y;
 				sumz += point.z;

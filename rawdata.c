@@ -10,14 +10,14 @@ SV_9DOF_GBY_KALMAN_t fusionstate;
 void raw_data_reset(void)
 {
 	rawcount = OVERSAMPLE_RATIO;
-	fInit_9DOF_GBY_KALMAN(&fusionstate, 100, OVERSAMPLE_RATIO);
+	fInit_9DOF_GBY_KALMAN(&fusionstate);
 	memset(&magcal, 0, sizeof(magcal));
-	magcal.fV[2] = 80.0f;  // initial guess
-	magcal.finvW[0][0] = 1.0f;
-	magcal.finvW[1][1] = 1.0f;
-	magcal.finvW[2][2] = 1.0f;
-	magcal.fFitErrorpc = 100.0f;
-	magcal.fFitErrorAge = 100.0f;
+	magcal.V[2] = 80.0f;  // initial guess
+	magcal.invW[0][0] = 1.0f;
+	magcal.invW[1][1] = 1.0f;
+	magcal.invW[2][2] = 1.0f;
+	magcal.FitError = 100.0f;
+	magcal.FitErrorAge = 100.0f;
 }
 
 static void add_magcal_data(const int16_t *data)
@@ -36,9 +36,9 @@ static void add_magcal_data(const int16_t *data)
 	if (i >= MAGBUFFSIZE) {
 		for (i=0; i < MAGBUFFSIZE; i++) {
 			for (j=i+1; j < MAGBUFFSIZE; j++) {
-				dx = magcal.iBpFast[0][i] - magcal.iBpFast[0][j];
-				dy = magcal.iBpFast[1][i] - magcal.iBpFast[1][j];
-				dz = magcal.iBpFast[2][i] - magcal.iBpFast[2][j];
+				dx = magcal.BpFast[0][i] - magcal.BpFast[0][j];
+				dy = magcal.BpFast[1][i] - magcal.BpFast[1][j];
+				dz = magcal.BpFast[2][i] - magcal.BpFast[2][j];
 				distsq = (int64_t)dx * (int64_t)dx;
 				distsq += (int64_t)dy * (int64_t)dy;
 				distsq += (int64_t)dz * (int64_t)dz;
@@ -51,9 +51,9 @@ static void add_magcal_data(const int16_t *data)
 		i = minindex;
 	}
 	// add it to the cal buffer
-	magcal.iBpFast[0][i] = data[6];
-	magcal.iBpFast[1][i] = data[7];
-	magcal.iBpFast[2][i] = data[8];
+	magcal.BpFast[0][i] = data[6];
+	magcal.BpFast[1][i] = data[7];
+	magcal.BpFast[2][i] = data[8];
 	magcal.valid[i] = 1;
 }
 
@@ -75,47 +75,46 @@ void raw_data(const int16_t *data)
 	x = (float)data[0] * G_PER_COUNT;
 	y = (float)data[1] * G_PER_COUNT;
 	z = (float)data[2] * G_PER_COUNT;
-	accel.fGpFast[0] = x;
-	accel.fGpFast[1] = y;
-	accel.fGpFast[2] = y;
-	accel.fGp[0] += x;
-	accel.fGp[1] += y;
-	accel.fGp[2] += y;
+	accel.GpFast[0] = x;
+	accel.GpFast[1] = y;
+	accel.GpFast[2] = y;
+	accel.Gp[0] += x;
+	accel.Gp[1] += y;
+	accel.Gp[2] += y;
 
 	x = (float)data[3] * DEG_PER_SEC_PER_COUNT;
 	y = (float)data[4] * DEG_PER_SEC_PER_COUNT;
 	z = (float)data[5] * DEG_PER_SEC_PER_COUNT;
-	gyro.fYp[0] += x;
-	gyro.fYp[1] += y;
-	gyro.fYp[2] += z;
-	gyro.iYpFast[rawcount][0] = data[3];
-	gyro.iYpFast[rawcount][1] = data[4];
-	gyro.iYpFast[rawcount][2] = data[5];
+	gyro.Yp[0] += x;
+	gyro.Yp[1] += y;
+	gyro.Yp[2] += z;
+	gyro.YpFast[rawcount][0] = data[3];
+	gyro.YpFast[rawcount][1] = data[4];
+	gyro.YpFast[rawcount][2] = data[5];
 
 	apply_calibration(data[6], data[7], data[8], &point);
-	mag.fBcFast[0] = point.x;
-	mag.fBcFast[1] = point.y;
-	mag.fBcFast[2] = point.z;
-	mag.fBc[0] += point.x;
-	mag.fBc[1] += point.y;
-	mag.fBc[2] += point.z;
+	mag.BcFast[0] = point.x;
+	mag.BcFast[1] = point.y;
+	mag.BcFast[2] = point.z;
+	mag.Bc[0] += point.x;
+	mag.Bc[1] += point.y;
+	mag.Bc[2] += point.z;
 
 	rawcount++;
 	if (rawcount >= OVERSAMPLE_RATIO) {
 		ratio = 1.0f / (float)OVERSAMPLE_RATIO;
-		accel.fGp[0] *= ratio;
-		accel.fGp[1] *= ratio;
-		accel.fGp[2] *= ratio;
-		gyro.fYp[0] *= ratio;
-		gyro.fYp[1] *= ratio;
-		gyro.fYp[2] *= ratio;
-		mag.fBc[0] *= ratio;
-		mag.fBc[1] *= ratio;
-		mag.fBc[2] *= ratio;
-		fRun_9DOF_GBY_KALMAN(&fusionstate, &accel, &mag, &gyro,
-			&magcal, OVERSAMPLE_RATIO);
+		accel.Gp[0] *= ratio;
+		accel.Gp[1] *= ratio;
+		accel.Gp[2] *= ratio;
+		gyro.Yp[0] *= ratio;
+		gyro.Yp[1] *= ratio;
+		gyro.Yp[2] *= ratio;
+		mag.Bc[0] *= ratio;
+		mag.Bc[1] *= ratio;
+		mag.Bc[2] *= ratio;
+		fRun_9DOF_GBY_KALMAN(&fusionstate, &accel, &mag, &gyro, &magcal);
 
-		memcpy(&current_orientation, &(fusionstate.fqPl), sizeof(Quaternion_t));
+		memcpy(&current_orientation, &(fusionstate.qPl), sizeof(Quaternion_t));
 	}
 }
 
@@ -159,11 +158,11 @@ int send_calibration(void)
 	*p++ = 117; // 2 byte signature
 	*p++ = 84;
 	for (i=0; i < 3; i++) {
-		p = copy_lsb_first(p, magcal.fV[i]); // 12 bytes offset/hardiron
+		p = copy_lsb_first(p, magcal.V[i]); // 12 bytes offset/hardiron
 	}
 	for (i=0; i < 3; i++) {
 		for (j=0; j < 3; j++) {
-			p = copy_lsb_first(p, magcal.finvW[i][j]); // 36 bytes softiron
+			p = copy_lsb_first(p, magcal.invW[i][j]); // 36 bytes softiron
 		}
 	}
 	crc = 0xFFFF;
