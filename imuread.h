@@ -60,6 +60,7 @@ typedef struct {
 } Quaternion_t;
 extern Quaternion_t current_orientation;
 
+extern int port_is_open(void);
 extern int open_port(const char *name);
 extern int read_serial_data(void);
 extern int write_serial_data(const void *ptr, int len);

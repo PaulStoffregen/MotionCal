@@ -4,6 +4,7 @@
 
 
 wxMenu *port_menu;
+wxMenu *sendcal_menu;
 wxString port_name;
 
 
@@ -60,6 +61,7 @@ void MyCanvas::InitGL()
 BEGIN_EVENT_TABLE(MyFrame,wxFrame)
 	EVT_MENU(wxID_ABOUT, MyFrame::OnAbout)
 	EVT_MENU(wxID_EXIT, MyFrame::OnQuit)
+	EVT_MENU(ID_SENDCAL, MyFrame::OnSendCal)
 	EVT_TIMER(ID_TIMER, MyFrame::OnTimer)
 	EVT_MENU_RANGE(9000, 9999, MyFrame::OnPort)
 	EVT_MENU_OPEN(MyMenu::OnShowPortList)
@@ -77,6 +79,9 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
 
 	menuBar = new wxMenuBar;
 	menu = new wxMenu;
+	menu->Append(ID_SENDCAL, wxT("Send Calibration"));
+	sendcal_menu = menu;
+	sendcal_menu->Enable(ID_SENDCAL, false);
 	menu->Append(wxID_EXIT, wxT("Quit"));
 	menuBar->Append(menu, wxT("&File"));
 
@@ -123,10 +128,31 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
 void MyFrame::OnTimer(wxTimerEvent &event)
 {
 	//printf("OnTimer\n");
-	read_serial_data();
-	m_canvas->Refresh();
+	if (port_is_open()) {
+		read_serial_data();
+		m_canvas->Refresh();
+		if (magcal.FitError < 6.0f) {
+			sendcal_menu->Enable(ID_SENDCAL, true);
+		} else if (magcal.FitError > 7.0f) {
+			sendcal_menu->Enable(ID_SENDCAL, false);
+		}
+	} else {
+		sendcal_menu->Enable(ID_SENDCAL, false);
+	}
 }
 
+void MyFrame::OnSendCal(wxCommandEvent &event)
+{
+	printf("OnSendCal\n");
+	printf("Magnetic Calibration:   (%.1f%% fit error)\n", magcal.FitError);
+	printf("   %7.2f   %6.3f %6.3f %6.3f\n",
+		magcal.V[0], magcal.invW[0][0], magcal.invW[0][1], magcal.invW[0][2]);
+	printf("   %7.2f   %6.3f %6.3f %6.3f\n",
+		magcal.V[1], magcal.invW[1][0], magcal.invW[1][1], magcal.invW[1][2]);
+	printf("   %7.2f   %6.3f %6.3f %6.3f\n",
+		magcal.V[2], magcal.invW[2][0], magcal.invW[2][1], magcal.invW[2][2]);
+	send_calibration();
+}
 
 void MyFrame::OnPort(wxCommandEvent &event)
 {
@@ -135,6 +161,7 @@ void MyFrame::OnPort(wxCommandEvent &event)
 
 	close_port();
         //printf("OnPort, id = %d, name = %s\n", id, (const char *)name);
+	sendcal_menu->Enable(ID_SENDCAL, false);
 	port_name = name;
         if (id == 9000) return;
 	raw_data_reset();
@@ -186,10 +213,11 @@ void MyMenu::OnShowPortList(wxMenuEvent &event)
         menu->AppendRadioItem(9000, " (none)");
         wxArrayString list = serial_port_list();
         num = list.GetCount();
+	bool isopen = port_is_open();
         for (int i=0; i < num; i++) {
                 //printf("%d: port %s\n", i, (const char *)list[i]);
                 menu->AppendRadioItem(9001 + i, list[i]);
-                if (port_name.IsSameAs(list[i])) {
+                if (isopen && port_name.IsSameAs(list[i])) {
                         menu->Check(9001 + i, true);
                         any = 1;
                 }

@@ -245,6 +245,12 @@ static void newdata(const unsigned char *data, int len)
 
 static int portfd=-1;
 
+int port_is_open(void)
+{
+	if (portfd > 0) return 1;
+	return 0;
+}
+
 int open_port(const char *name)
 {
 	struct termios termsettings;
@@ -279,7 +285,7 @@ int read_serial_data(void)
 		if (n > 0 && n <= sizeof(buf)) {
 			newdata(buf, n);
 			nodata_count = 0;
-			//return n;
+			return n;
 		} else if (n == 0) {
 			if (++nodata_count > 6) {
 				close_port();
@@ -339,7 +345,13 @@ void close_port(void)
 
 #elif defined(WINDOWS)
 
-static HANDLE port_handle;
+static HANDLE port_handle=INVALID_HANDLE_VALUE;
+
+int port_is_open(void)
+{
+	if (port_handle == INVALID_HANDLE_VALUE) return 0;
+	return 1;
+}
 
 int open_port(const char *name)
 {

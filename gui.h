@@ -24,6 +24,7 @@
 
 
 #define ID_TIMER		10000
+#define ID_SENDCAL		10001
 
 
 class MyCanvas : public wxGLCanvas
@@ -62,6 +63,7 @@ public:
 	~MyFrame(void);
 	void InitGL();
 	void OnPort(wxCommandEvent &event);
+	void OnSendCal(wxCommandEvent &event);
 private:
 	MyCanvas *m_canvas;
 	wxTimer *m_timer;
