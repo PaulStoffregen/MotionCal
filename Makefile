@@ -39,7 +39,7 @@ OBJS = visualize.o serialdata.o rawdata.o magcal.o matrix.o fusion.o
 
 all: $(ALL)
 
-gui: gui.o $(OBJS)
+gui: gui.o portlist.o $(OBJS)
 	$(CXX) -s $(CFLAGS) $(LDFLAGS) -o $@ $^ `$(WXCONFIG) --libs all,opengl`
 
 gui.exe: gui
@@ -62,6 +62,7 @@ clean:
 	rm -rf gui.app .DS_Store
 
 gui.o: gui.cpp gui.h imuread.h
+portlist.o: portlist.cpp gui.h
 imuread.o: imuread.c imuread.h
 visualize.o: visualize.c imuread.h
 serialdata.o: serialdata.c imuread.h

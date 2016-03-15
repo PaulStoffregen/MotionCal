@@ -61,6 +61,7 @@ public:
 		long style = wxDEFAULT_FRAME_STYLE);
 	~MyFrame(void);
 	void InitGL();
+	void OnPort(wxCommandEvent &event);
 private:
 	MyCanvas *m_canvas;
 	wxTimer *m_timer;
@@ -68,6 +69,14 @@ private:
 	void OnQuit(wxCommandEvent &event);
 	void OnTimer(wxTimerEvent &event);
 	DECLARE_EVENT_TABLE()
+};
+
+class MyMenu: public wxMenu
+{
+public:
+	MyMenu(const wxString& title = "", long style = 0);
+	void OnShowPortList(wxMenuEvent &event);
+	void OnHighlight(wxMenuEvent &event);
 };
 
 
@@ -80,5 +89,9 @@ public:
 private:
         //wxSingleInstanceChecker *m_instance;
 };
+
+// portlist.cpp
+wxArrayString serial_port_list();
+
 
 #endif
