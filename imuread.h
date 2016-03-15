@@ -21,6 +21,7 @@
   #include <windows.h>
   #include <GL/gl.h>
   #include <GL/glu.h>
+  #define random() rand()
 #elif defined(MACOSX)
   #include <termios.h>
   #include <unistd.h>

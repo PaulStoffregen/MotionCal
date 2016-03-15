@@ -261,7 +261,8 @@ wxArrayString serial_port_list()
 		}
 	} else {
 		char buf[1024];
-		win32_err(buf);
+		buf[0] = 0;
+		//win32_err(buf);
 		printf("QueryDosDeviceA failed, error \"%s\"\n", buf);
 		printf("Detect Serial using brute force GetDefaultCommConfig probing: ");
 		for (int i=1; i<=32; i++) {
@@ -269,7 +270,7 @@ wxArrayString serial_port_list()
 			COMMCONFIG cfg;
 			DWORD len;
 			snprintf(buf, sizeof(buf), "COM%d", i);
-			if (GetDefaultCommConfig(buf, &cfg, &len)) {
+			if (GetDefaultCommConfigA(buf, &cfg, &len)) {
 				wxString name;
 				name.Printf("COM%d:", i);
 				list.Add(name);
