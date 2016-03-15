@@ -100,11 +100,17 @@ void display_callback(void)
 	float longitude[MAGBUFFSIZE]; // -PI to +PI
 	float sumx=0.0, sumy=0.0, sumz=0.0, summag=0.0;
 	int spheredist[100];
+	Quaternion_t orientation;
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glColor3f(1, 0, 0);	// set current color to red
 	memset(spheredist, 0, sizeof(spheredist));
-
+	glLoadIdentity();
+#if 0
+	gluLookAt(0.0, 0.0, 0.8, // eye location
+		  0.0, 0.0, 0.0, // center
+		  0.0, 1.0, 0.0); // up direction
+#endif
 	xscale = 0.05;
 	yscale = 0.05;
 	zscale = 0.05;
@@ -114,13 +120,23 @@ void display_callback(void)
 
 	//if (hard_iron.valid) {
 	if (1) {
-		quad_to_rotation(&current_orientation, rotation);
+		memcpy(&orientation, &current_orientation, sizeof(orientation));
+		// TODO: this almost but doesn't perfectly seems to get the
+		//  real & screen axes in sync....
+		//orientation.q0 *= -1.0f;
+		//orientation.q1 *= -1.0f;
+		//orientation.q2 *= -1.0f;
+		orientation.q3 *= -1.0f;
+		quad_to_rotation(&orientation, rotation);
 		for (i=0; i < MAGBUFFSIZE; i++) {
 			//if (caldata[i].valid) {
 			if (magcal.valid[i]) {
 				//apply_calibration(&caldata[i], &point);
 				apply_calibration(magcal.BpFast[0][i], magcal.BpFast[1][i],
 					magcal.BpFast[2][i], &point);
+				//point.x *= -1.0f;
+				//point.y *= -1.0f;
+				//point.z *= -1.0f;
 				sumx += point.x;
 				sumy += point.y;
 				sumz += point.z;

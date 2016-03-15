@@ -75,7 +75,7 @@ void MagCal_Run(void)
 
 	if (magcal.ValidMagCal) {
 		// age the existing fit error to avoid one good calibration locking out future updates
-		magcal.FitErrorAge *= 1.01f;
+		magcal.FitErrorAge *= 1.02f;
 	}
 
 	// is enough data collected
