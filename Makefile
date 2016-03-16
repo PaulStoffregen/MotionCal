@@ -43,7 +43,8 @@ gui: gui.o portlist.o $(OBJS)
 	$(CXX) -s $(CFLAGS) $(LDFLAGS) -o $@ $^ `$(WXCONFIG) --libs all,opengl`
 
 gui.exe: gui
-	cp gui gui.exe
+	cp gui $@
+	-./cp_windows.sh $@
 
 gui.app: gui Info.plist
 	mkdir -p $@/Contents/MacOS

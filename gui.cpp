@@ -110,7 +110,7 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
         WX_GL_DOUBLEBUFFER,
 	0};
 	m_canvas = new MyCanvas(this, wxID_ANY, gl_attrib);
-	m_canvas->SetMinSize(wxSize(340,340));
+	m_canvas->SetMinSize(wxSize(400,400));
 
 	middlesizer->Add(m_canvas, 1, wxEXPAND | wxALL, 10);
 	topsizer->SetSizeHints(this);
@@ -248,7 +248,7 @@ bool MyApp::OnInit()
 	wxPoint pos(100, 100);
 
 	MyFrame *frame = new MyFrame(NULL, -1, wxT("IMU Read"), pos, wxSize(1120,760),
-		wxDEFAULT_FRAME_STYLE & ~(wxMAXIMIZE_BOX | wxRESIZE_BORDER));
+		wxDEFAULT_FRAME_STYLE);
 	frame->Show( true );
 	return true;
 }
