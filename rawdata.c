@@ -5,12 +5,11 @@ static int rawcount=OVERSAMPLE_RATIO;
 static AccelSensor_t accel;
 static MagSensor_t   mag;
 static GyroSensor_t  gyro;
-SV_9DOF_GBY_KALMAN_t fusionstate;
 
 void raw_data_reset(void)
 {
 	rawcount = OVERSAMPLE_RATIO;
-	fInit_9DOF_GBY_KALMAN(&fusionstate);
+	fusion_init();
 	memset(&magcal, 0, sizeof(magcal));
 	magcal.V[2] = 80.0f;  // initial guess
 	magcal.invW[0][0] = 1.0f;
@@ -75,7 +74,7 @@ void raw_data(const int16_t *data)
 		magdiff = sqrtf(x * x + y * y + z * z);
 		//printf("magdiff = %.2f\n", magdiff);
 		if (magdiff > 0.8f) {
-			fInit_9DOF_GBY_KALMAN(&fusionstate);
+			fusion_init();
 			rawcount = OVERSAMPLE_RATIO;
 			force_orientation_counter = 240;
 		}
@@ -84,7 +83,7 @@ void raw_data(const int16_t *data)
 	if (force_orientation_counter > 0) {
 		if (--force_orientation_counter == 0) {
 			//printf("delayed forcible orientation reset\n");
-			fInit_9DOF_GBY_KALMAN(&fusionstate);
+			fusion_init();
 			rawcount = OVERSAMPLE_RATIO;
 		}
 	}
@@ -111,9 +110,9 @@ void raw_data(const int16_t *data)
 	gyro.Yp[0] += x;
 	gyro.Yp[1] += y;
 	gyro.Yp[2] += z;
-	gyro.YpFast[rawcount][0] = data[3];
-	gyro.YpFast[rawcount][1] = data[4];
-	gyro.YpFast[rawcount][2] = data[5];
+	gyro.YpFast[rawcount][0] = x;
+	gyro.YpFast[rawcount][1] = y;
+	gyro.YpFast[rawcount][2] = z;
 
 	apply_calibration(data[6], data[7], data[8], &point);
 	mag.BcFast[0] = point.x;
@@ -135,9 +134,8 @@ void raw_data(const int16_t *data)
 		mag.Bc[0] *= ratio;
 		mag.Bc[1] *= ratio;
 		mag.Bc[2] *= ratio;
-		fRun_9DOF_GBY_KALMAN(&fusionstate, &accel, &mag, &gyro, &magcal);
-
-		memcpy(&current_orientation, &(fusionstate.qPl), sizeof(Quaternion_t));
+		fusion_update(&accel, &mag, &gyro, &magcal);
+		fusion_read(&current_orientation);
 	}
 }
 

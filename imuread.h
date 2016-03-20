@@ -128,16 +128,16 @@ void fmatrixAeqRenormRotA(float A[][3]);
 #define G_PER_COUNT 0.0001220703125F  // = 1/8192
 typedef struct
 {
-	float GpFast[3];       // fast (typically 200Hz) readings (g)
 	float Gp[3];           // slow (typically 25Hz) averaged readings (g)
+	float GpFast[3];       // fast (typically 200Hz) readings (g)
 } AccelSensor_t;
 
 // magnetometer sensor structure definition
 #define UT_PER_COUNT 0.1F
 typedef struct
 {
-	float BcFast[3];       // fast (typically 200Hz) calibrated readings (uT)
 	float Bc[3];           // slow (typically 25Hz) averaged calibrated readings (uT)
+	float BcFast[3];       // fast (typically 200Hz) calibrated readings (uT)
 } MagSensor_t;
 
 // gyro sensor structure definition
@@ -145,74 +145,15 @@ typedef struct
 typedef struct
 {
 	float Yp[3];                           // raw gyro sensor output (deg/s)
-	int16_t YpFast[OVERSAMPLE_RATIO][3];     // fast (typically 200Hz) readings
+	float YpFast[OVERSAMPLE_RATIO][3];     // fast (typically 200Hz) readings
 } GyroSensor_t;
 
 
 
-// 9DOF Kalman filter accelerometer, magnetometer and gyroscope state vector structure
-typedef struct
-{
-	// start: elements common to all motion state vectors
-	// Euler angles
-	float PhiPl;			// roll (deg)
-	float ThePl;			// pitch (deg)
-	float PsiPl;			// yaw (deg)
-	float RhoPl;			// compass (deg)
-	float ChiPl;			// tilt from vertical (deg)
-	// orientation matrix, quaternion and rotation vector
-	float RPl[3][3];		// a posteriori orientation matrix
-	Quaternion_t qPl;		// a posteriori orientation quaternion
-	float RVecPl[3];		// rotation vector
-	// angular velocity
-	float Omega[3];			// angular velocity (deg/s)
-	// systick timer for benchmarking
-	int32_t systick;		// systick timer;
-	// end: elements common to all motion state vectors
-
-	// elements transmitted over bluetooth in kalman packet
-	float bPl[3];			// gyro offset (deg/s)
-	float ThErrPl[3];		// orientation error (deg)
-	float bErrPl[3];		// gyro offset error (deg/s)
-	// end elements transmitted in kalman packet
-
-	float dErrGlPl[3];		// magnetic disturbance error (uT, global frame)
-	float dErrSePl[3];		// magnetic disturbance error (uT, sensor frame)
-	float aErrSePl[3];		// linear acceleration error (g, sensor frame)
-	float aSeMi[3];			// linear acceleration (g, sensor frame)
-	float DeltaPl;			// inclination angle (deg)
-	float aSePl[3];			// linear acceleration (g, sensor frame)
-	float aGlPl[3];			// linear acceleration (g, global frame)
-	float gErrSeMi[3];		// difference (g, sensor frame) of gravity vector (accel) and gravity vector (gyro)
-	float mErrSeMi[3];		// difference (uT, sensor frame) of geomagnetic vector (magnetometer) and geomagnetic vector (gyro)
-	float gSeGyMi[3];		// gravity vector (g, sensor frame) measurement from gyro
-	float mSeGyMi[3];		// geomagnetic vector (uT, sensor frame) measurement from gyro
-	float mGl[3];			// geomagnetic vector (uT, global frame)
-	float QvAA;			// accelerometer terms of Qv
-	float QvMM;			// magnetometer terms of Qv
-	float PPlus12x12[12][12];	// covariance matrix P+
-	float K12x6[12][6];		// kalman filter gain matrix K
-	float Qw12x12[12][12];		// covariance matrix Qw
-	float C6x12[6][12];		// measurement matrix C
-	float RMi[3][3];		// a priori orientation matrix
-	Quaternion_t Deltaq;		// delta quaternion
-	Quaternion_t qMi;		// a priori orientation quaternion
-	float casq;			// FCA * FCA;
-	float cdsq;			// FCD * FCD;
-	float Fastdeltat;		// sensor sampling interval (s) = 1 / SENSORFS
-	float deltat;			// kalman filter sampling interval (s) = OVERSAMPLE_RATIO / SENSORFS
-	float deltatsq;			// fdeltat * fdeltat
-	float QwbplusQvG;		// FQWB + FQVG
-	int16_t FirstOrientationLock;	// denotes that 9DOF orientation has locked to 6DOF
-	int8_t resetflag;		// flag to request re-initialization on next pass
-} SV_9DOF_GBY_KALMAN_t;
-
-void fInit_9DOF_GBY_KALMAN(SV_9DOF_GBY_KALMAN_t *SV);
-void fRun_9DOF_GBY_KALMAN(SV_9DOF_GBY_KALMAN_t *SV,
-	const AccelSensor_t *Accel, const MagSensor_t *Mag, const GyroSensor_t *Gyro,
-	const MagCalibration_t *MagCal);
-
-
+void fusion_init(void);
+void fusion_update(const AccelSensor_t *Accel, const MagSensor_t *Mag, const GyroSensor_t *Gyro,
+    const MagCalibration_t *MagCal);
+void fusion_read(Quaternion_t *q);
 
 #ifdef __cplusplus
 } // extern "C"
