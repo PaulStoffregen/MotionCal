@@ -149,6 +149,8 @@ typedef struct
 } GyroSensor_t;
 
 
+//#define USE_NXP_FUSION
+#define USE_MAHONY_FUSION
 
 void fusion_init(void);
 void fusion_update(const AccelSensor_t *Accel, const MagSensor_t *Mag, const GyroSensor_t *Gyro,

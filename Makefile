@@ -35,7 +35,7 @@ VERSION = 0.01
 
 endif
 
-OBJS = visualize.o serialdata.o rawdata.o magcal.o matrix.o fusion.o quality.o
+OBJS = visualize.o serialdata.o rawdata.o magcal.o matrix.o fusion.o quality.o mahony.o
 
 all: $(ALL)
 
@@ -72,5 +72,6 @@ magcal.o: magcal.c imuread.h
 matrix.o: matrix.c imuread.h
 fusion.o: fusion.c imuread.h
 quality.o: quality.c imuread.h
+mahony.o: mahony.c imuread.h
 
 
