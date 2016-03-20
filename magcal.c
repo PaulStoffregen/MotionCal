@@ -82,9 +82,11 @@ void MagCal_Run(void)
 	if (count < MINMEASUREMENTS7CAL) {
 		isolver = 4;
 		fUpdateCalibration4INV(&magcal); // 4 element matrix inversion calibration
+		if (magcal.trFitErrorpc < 12.0f) magcal.trFitErrorpc = 12.0f;
 	} else if (count < MINMEASUREMENTS10CAL) {
 		isolver = 7;
 		fUpdateCalibration7EIG(&magcal); // 7 element eigenpair calibration
+		if (magcal.trFitErrorpc < 7.5f) magcal.trFitErrorpc = 7.5f;
 	} else {
 		isolver = 10;
 		fUpdateCalibration10EIG(&magcal); // 10 element eigenpair calibration
@@ -103,7 +105,11 @@ void MagCal_Run(void)
 			//printf("new magnetic cal, B=%.2f uT\n", magcal.trB);
 			magcal.ValidMagCal = isolver;
 			magcal.FitError = magcal.trFitErrorpc;
-			magcal.FitErrorAge = magcal.trFitErrorpc;
+			if (magcal.trFitErrorpc > 2.0f) {
+				magcal.FitErrorAge = magcal.trFitErrorpc;
+			} else {
+				magcal.FitErrorAge = 2.0f;
+			}
 			magcal.B = magcal.trB;
 			magcal.FourBsq = 4.0F * magcal.trB * magcal.trB;
 			for (i = X; i <= Z; i++) {
