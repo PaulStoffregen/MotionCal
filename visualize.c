@@ -105,10 +105,11 @@ void display_callback(void)
 			}
 		}
 	}
-#if 0
-	printf(" quality: %5.1f  %5.1f  %5.1f\n",
+#if 1
+	printf(" quality: %5.1f  %5.1f  %5.1f  %5.1f\n",
 		quality_surface_gap_error(),
 		quality_magnitude_variance_error(),
+		quality_wobble_error(),
 		quality_spherical_fit_error());
 #endif
 }

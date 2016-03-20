@@ -78,7 +78,7 @@ void quality_reset(void);
 void quality_update(const Point_t *point);
 float quality_surface_gap_error(void);
 float quality_magnitude_variance_error(void);
-float quality_centroid_placement_error(void);
+float quality_wobble_error(void);
 float quality_spherical_fit_error(void);
 
 // magnetic calibration & buffer structure
