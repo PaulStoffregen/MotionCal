@@ -60,11 +60,34 @@ static void add_magcal_data(const int16_t *data)
 
 void raw_data(const int16_t *data)
 {
-	float x, y, z, ratio;
+	static int force_orientation_counter=0;
+	float x, y, z, ratio, magdiff;
 	Point_t point;
 
 	add_magcal_data(data);
-	MagCal_Run();
+	x = magcal.V[0];
+	y = magcal.V[1];
+	z = magcal.V[2];
+	if (MagCal_Run()) {
+		x -= magcal.V[0];
+		y -= magcal.V[1];
+		z -= magcal.V[2];
+		magdiff = sqrtf(x * x + y * y + z * z);
+		//printf("magdiff = %.2f\n", magdiff);
+		if (magdiff > 0.8f) {
+			fInit_9DOF_GBY_KALMAN(&fusionstate);
+			rawcount = OVERSAMPLE_RATIO;
+			force_orientation_counter = 240;
+		}
+	}
+
+	if (force_orientation_counter > 0) {
+		if (--force_orientation_counter == 0) {
+			//printf("delayed forcible orientation reset\n");
+			fInit_9DOF_GBY_KALMAN(&fusionstate);
+			rawcount = OVERSAMPLE_RATIO;
+		}
+	}
 
 	if (rawcount >= OVERSAMPLE_RATIO) {
 		memset(&accel, 0, sizeof(accel));

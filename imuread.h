@@ -38,7 +38,7 @@
   #define PORT "/dev/cu.usbmodemfd132"
 #endif
 
-#define TIMEOUT_MSEC 33
+#define TIMEOUT_MSEC 14
 
 #define MAGBUFFSIZE 650 // Freescale's lib needs at least 392
 
@@ -73,7 +73,7 @@ void visualize_init(void);
 void apply_calibration(int16_t rawx, int16_t rawy, int16_t rawz, Point_t *out);
 void display_callback(void);
 void resize_callback(int width, int height);
-void MagCal_Run(void);
+int MagCal_Run(void);
 void quality_reset(void);
 void quality_update(const Point_t *point);
 float quality_surface_gap_error(void);
@@ -128,39 +128,24 @@ void fmatrixAeqRenormRotA(float A[][3]);
 #define G_PER_COUNT 0.0001220703125F  // = 1/8192
 typedef struct
 {
-	//int32_t iSumGpFast[3];    // sum of fast measurements
 	float GpFast[3];       // fast (typically 200Hz) readings (g)
 	float Gp[3];           // slow (typically 25Hz) averaged readings (g)
-	//float fgPerCount;       // initialized to FGPERCOUNT
-	//int16_t iGpFast[3];       // fast (typically 200Hz) readings
-	//int16_t iGp[3];           // slow (typically 25Hz) averaged readings (counts)
 } AccelSensor_t;
 
 // magnetometer sensor structure definition
 #define UT_PER_COUNT 0.1F
 typedef struct
 {
-	//int32_t iSumBpFast[3];    // sum of fast measurements
-	//float fBpFast[3];       // fast (typically 200Hz) raw readings (uT)
-	//float fBp[3];           // slow (typically 25Hz) averaged raw readings (uT)
 	float BcFast[3];       // fast (typically 200Hz) calibrated readings (uT)
 	float Bc[3];           // slow (typically 25Hz) averaged calibrated readings (uT)
-	//float fuTPerCount;      // initialized to FUTPERCOUNT
-	//float fCountsPeruT;     // initialized to FCOUNTSPERUT
-	//int16_t iBpFast[3];       // fast (typically 200Hz) raw readings (counts)
-	//int16_t iBp[3];           // slow (typically 25Hz) averaged raw readings (counts)
-	//int16_t iBc[3];           // slow (typically 25Hz) averaged calibrated readings (counts)
 } MagSensor_t;
 
 // gyro sensor structure definition
 #define DEG_PER_SEC_PER_COUNT 0.0625F  // = 1/16
 typedef struct
 {
-	//int32_t iSumYpFast[3];                    // sum of fast measurements
 	float Yp[3];                           // raw gyro sensor output (deg/s)
-	//float fDegPerSecPerCount;               // initialized to FDEGPERSECPERCOUNT
 	int16_t YpFast[OVERSAMPLE_RATIO][3];     // fast (typically 200Hz) readings
-	//int16_t iYp[3];                           // averaged gyro sensor output (counts)
 } GyroSensor_t;
 
 

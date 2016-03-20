@@ -44,8 +44,8 @@
 #define MINMEASUREMENTS4CAL 40      // minimum number of measurements for 4 element calibration
 #define MINMEASUREMENTS7CAL 100     // minimum number of measurements for 7 element calibration
 #define MINMEASUREMENTS10CAL 150    // minimum number of measurements for 10 element calibration
-#define MINBFITUT 15.0F             // minimum geomagnetic field B (uT) for valid calibration
-#define MAXBFITUT 80.0F             // maximum geomagnetic field B (uT) for valid calibration
+#define MINBFITUT 22.0F             // minimum geomagnetic field B (uT) for valid calibration
+#define MAXBFITUT 67.0F             // maximum geomagnetic field B (uT) for valid calibration
 #define FITERRORAGINGSECS 7200.0F   // 2 hours: time for fit error to increase (age) by e=2.718
 
 static void fUpdateCalibration4INV(MagCalibration_t *MagCal);
@@ -55,7 +55,7 @@ static void fUpdateCalibration10EIG(MagCalibration_t *MagCal);
 
 
 // run the magnetic calibration
-void MagCal_Run(void)
+int MagCal_Run(void)
 {
 	int i, j;			// loop counters
 	int isolver;		// magnetic solver used
@@ -63,7 +63,7 @@ void MagCal_Run(void)
 	static int waitcount=0;
 
 	// only do the calibration occasionally
-	if (++waitcount < 20) return;
+	if (++waitcount < 20) return 0;
 	waitcount = 0;
 
 	// count number of data points
@@ -71,7 +71,7 @@ void MagCal_Run(void)
 		if (magcal.valid[i]) count++;
 	}
 
-	if (count < MINMEASUREMENTS4CAL) return;
+	if (count < MINMEASUREMENTS4CAL) return 0;
 
 	if (magcal.ValidMagCal) {
 		// age the existing fit error to avoid one good calibration locking out future updates
@@ -118,8 +118,10 @@ void MagCal_Run(void)
 					magcal.invW[i][j] = magcal.trinvW[i][j];
 				}
 			}
+			return 1; // indicates new calibration applied
 		}
 	}
+	return 0;
 }
 
 
