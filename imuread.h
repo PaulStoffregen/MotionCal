@@ -74,7 +74,12 @@ void apply_calibration(int16_t rawx, int16_t rawy, int16_t rawz, Point_t *out);
 void display_callback(void);
 void resize_callback(int width, int height);
 void MagCal_Run(void);
-
+void quality_reset(void);
+void quality_update(const Point_t *point);
+float quality_surface_gap_error(void);
+float quality_magnitude_variance_error(void);
+float quality_centroid_placement_error(void);
+float quality_spherical_fit_error(void);
 
 // magnetic calibration & buffer structure
 typedef struct {
