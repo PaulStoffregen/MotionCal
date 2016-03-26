@@ -161,14 +161,16 @@ static void mahony_update(float gx, float gy, float gz, float ax, float ay, floa
 		halfwy = bx * (q1q2 - q0q3) + bz * (q0q1 + q2q3);
 		halfwz = bx * (q0q2 + q1q3) + bz * (0.5f - q1q1 - q2q2);
 
-		// Error is sum of cross product between estimated direction and measured direction of field vectors
+		// Error is sum of cross product between estimated direction
+		// and measured direction of field vectors
 		halfex = (ay * halfvz - az * halfvy) + (my * halfwz - mz * halfwy);
 		halfey = (az * halfvx - ax * halfvz) + (mz * halfwx - mx * halfwz);
 		halfez = (ax * halfvy - ay * halfvx) + (mx * halfwy - my * halfwx);
 
 		// Compute and apply integral feedback if enabled
 		if(twoKi > 0.0f) {
-			integralFBx += twoKi * halfex * (1.0f / SENSORFS);	// integral error scaled by Ki
+			// integral error scaled by Ki
+			integralFBx += twoKi * halfex * (1.0f / SENSORFS);
 			integralFBy += twoKi * halfey * (1.0f / SENSORFS);
 			integralFBz += twoKi * halfez * (1.0f / SENSORFS);
 			gx += integralFBx;	// apply integral feedback
@@ -217,8 +219,9 @@ void mahony_updateIMU(float gx, float gy, float gz, float ax, float ay, float az
 	float halfex, halfey, halfez;
 	float qa, qb, qc;
 
-	// Compute feedback only if accelerometer measurement valid (avoids NaN in accelerometer normalisation)
-	if(!((ax == 0.0f) && (ay == 0.0f) && (az == 0.0f))) {
+	// Compute feedback only if accelerometer measurement valid
+	// (avoids NaN in accelerometer normalisation)
+	if (!((ax == 0.0f) && (ay == 0.0f) && (az == 0.0f))) {
 
 		// Normalise accelerometer measurement
 		recipNorm = invSqrt(ax * ax + ay * ay + az * az);
@@ -238,7 +241,8 @@ void mahony_updateIMU(float gx, float gy, float gz, float ax, float ay, float az
 
 		// Compute and apply integral feedback if enabled
 		if(twoKi > 0.0f) {
-			integralFBx += twoKi * halfex * (1.0f / SENSORFS);	// integral error scaled by Ki
+			// integral error scaled by Ki
+			integralFBx += twoKi * halfex * (1.0f / SENSORFS);
 			integralFBy += twoKi * halfey * (1.0f / SENSORFS);
 			integralFBz += twoKi * halfez * (1.0f / SENSORFS);
 			gx += integralFBx;	// apply integral feedback
@@ -282,14 +286,17 @@ void mahony_updateIMU(float gx, float gy, float gz, float ax, float ay, float az
 // See: http://en.wikipedia.org/wiki/Fast_inverse_square_root
 
 static float invSqrt(float x) {
+	union {
+		float f;
+		int32_t i;
+	} y;
 	float halfx = 0.5f * x;
-	float y = x;
-	long i = *(long*)&y;
-	i = 0x5f3759df - (i>>1);
-	y = *(float*)&i;
-	y = y * (1.5f - (halfx * y * y));
-	y = y * (1.5f - (halfx * y * y));
-	return y;
+
+	y.f = x;
+	y.i = 0x5f375a86 - (y.i >> 1);
+	y.f = y.f * (1.5f - (halfx * y.f * y.f));
+	y.f = y.f * (1.5f - (halfx * y.f * y.f));
+	return y.f;
 }
 
 //==============================================================================================
