@@ -67,6 +67,8 @@ extern int read_serial_data(void);
 extern int write_serial_data(const void *ptr, int len);
 extern void close_port(void);
 void raw_data_reset(void);
+void cal1_data(const float *data);
+void cal2_data(const float *data);
 void raw_data(const int16_t *data);
 int send_calibration(void);
 void visualize_init(void);

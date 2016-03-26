@@ -177,10 +177,17 @@ static int packet_parse(const unsigned char *data, int len)
 	return ret;
 }
 
+#define ASCII_STATE_WORD  0
+#define ASCII_STATE_RAW   1
+#define ASCII_STATE_CAL1  2
+#define ASCII_STATE_CAL2  3
+
 static int ascii_parse(const unsigned char *data, int len)
 {
+	static int ascii_state=ASCII_STATE_WORD;
 	static int ascii_num=0, ascii_neg=0, ascii_count=0;
 	static int16_t ascii_raw_data[9];
+	static float ascii_cal_data[10];
 	static unsigned int ascii_raw_data_count=0;
 	const char *p, *end;
 	int ret=0;
@@ -188,42 +195,153 @@ static int ascii_parse(const unsigned char *data, int len)
 	//print_data("ascii_parse", data, len);
 	end = (const char *)(data + len);
 	for (p = (const char *)data ; p < end; p++) {
-		if (*p == '-') {
-			//printf("ascii_parse negative\n");
-			if (ascii_count > 0) goto fail;
-			ascii_neg = 1;
-		} else if (isdigit(*p)) {
-			//printf("ascii_parse digit\n");
-			ascii_num = ascii_num * 10 + *p - '0';
-			ascii_count++;
-		} else if (*p == ',') {
-			//printf("ascii_parse comma, %d\n", ascii_num);
-			if (ascii_neg) ascii_num = -ascii_num;
-			if (ascii_num < -32768 && ascii_num > 32767) goto fail;
-			if (ascii_raw_data_count >= 8) goto fail;
-			ascii_raw_data[ascii_raw_data_count++] = ascii_num;
-			ascii_num = 0;
-			ascii_neg = 0;
-			ascii_count = 0;
-		} else if (*p == 13) {
-			//printf("ascii_parse newline\n");
-			if (ascii_neg) ascii_num = -ascii_num;
-			if (ascii_num < -32768 && ascii_num > 32767) goto fail;
-			if (ascii_raw_data_count != 8) goto fail;
-			ascii_raw_data[ascii_raw_data_count] = ascii_num;
-			raw_data(ascii_raw_data);
-			ret = 1;
-			ascii_raw_data_count = 0;
-			ascii_num = 0;
-			ascii_neg = 0;
-			ascii_count = 0;
-		} else if (*p == 10) {
-		} else {
-			goto fail;
+		if (ascii_state == ASCII_STATE_WORD) {
+			if (ascii_count == 0) {
+				if (*p == 'R') {
+					ascii_num = ASCII_STATE_RAW;
+					ascii_count = 1;
+				} else if (*p == 'C') {
+					ascii_num = ASCII_STATE_CAL1;
+					ascii_count = 1;
+				}
+			} else if (ascii_count == 1) {
+				if (*p == 'a') {
+					ascii_count = 2;
+				} else {
+					ascii_num = 0;
+					ascii_count = 0;
+				}
+			} else if (ascii_count == 2) {
+				if (*p == 'w' && ascii_num == ASCII_STATE_RAW) {
+					ascii_count = 3;
+				} else if (*p == 'l' && ascii_num == ASCII_STATE_CAL1) {
+					ascii_count = 3;
+				} else {
+					ascii_num = 0;
+					ascii_count = 0;
+				}
+			} else if (ascii_count == 3) {
+				if (*p == ':' && ascii_num == ASCII_STATE_RAW) {
+					ascii_state = ASCII_STATE_RAW;
+					ascii_raw_data_count = 0;
+					ascii_num = 0;
+					ascii_count = 0;
+				} else if (*p == '1' && ascii_num == ASCII_STATE_CAL1) {
+					ascii_count = 4;
+				} else if (*p == '2' && ascii_num == ASCII_STATE_CAL1) {
+					ascii_num = ASCII_STATE_CAL2;
+					ascii_count = 4;
+				} else {
+					ascii_num = 0;
+					ascii_count = 0;
+				}
+			} else if (ascii_count == 4) {
+				if (*p == ':' && ascii_num == ASCII_STATE_CAL1) {
+					ascii_state = ASCII_STATE_CAL1;
+					ascii_raw_data_count = 0;
+					ascii_num = 0;
+					ascii_count = 0;
+				} else if (*p == ':' && ascii_num == ASCII_STATE_CAL2) {
+					ascii_state = ASCII_STATE_CAL2;
+					ascii_raw_data_count = 0;
+					ascii_num = 0;
+					ascii_count = 0;
+				} else {
+					ascii_num = 0;
+					ascii_count = 0;
+				}
+			} else {
+				goto fail;
+			}
+		} else if (ascii_state == ASCII_STATE_RAW) {
+			if (*p == '-') {
+				//printf("ascii_parse negative\n");
+				if (ascii_count > 0) goto fail;
+				ascii_neg = 1;
+			} else if (isdigit(*p)) {
+				//printf("ascii_parse digit\n");
+				ascii_num = ascii_num * 10 + *p - '0';
+				ascii_count++;
+			} else if (*p == ',') {
+				//printf("ascii_parse comma, %d\n", ascii_num);
+				if (ascii_neg) ascii_num = -ascii_num;
+				if (ascii_num < -32768 && ascii_num > 32767) goto fail;
+				if (ascii_raw_data_count >= 8) goto fail;
+				ascii_raw_data[ascii_raw_data_count++] = ascii_num;
+				ascii_num = 0;
+				ascii_neg = 0;
+				ascii_count = 0;
+			} else if (*p == 13) {
+				//printf("ascii_parse newline\n");
+				if (ascii_neg) ascii_num = -ascii_num;
+				if (ascii_num < -32768 && ascii_num > 32767) goto fail;
+				if (ascii_raw_data_count != 8) goto fail;
+				ascii_raw_data[ascii_raw_data_count] = ascii_num;
+				raw_data(ascii_raw_data);
+				ret = 1;
+				ascii_raw_data_count = 0;
+				ascii_num = 0;
+				ascii_neg = 0;
+				ascii_count = 0;
+				ascii_state = ASCII_STATE_WORD;
+			} else if (*p == 10) {
+			} else {
+				goto fail;
+			}
+		} else if (ascii_state == ASCII_STATE_CAL1 || ascii_state == ASCII_STATE_CAL2) {
+			if (*p == '-') {
+				//printf("ascii_parse negative\n");
+				if (ascii_count > 0) goto fail;
+				ascii_neg = 1;
+			} else if (isdigit(*p)) {
+				//printf("ascii_parse digit\n");
+				ascii_num = ascii_num * 10 + *p - '0';
+				ascii_count++;
+			} else if (*p == '.') {
+				//printf("ascii_parse decimal, %d\n", ascii_num);
+				if (ascii_raw_data_count > 9) goto fail;
+				ascii_cal_data[ascii_raw_data_count] = (float)ascii_num;
+				ascii_num = 0;
+				ascii_count = 0;
+			} else if (*p == ',') {
+				//printf("ascii_parse comma, %d\n", ascii_num);
+				if (ascii_raw_data_count > 9) goto fail;
+				ascii_cal_data[ascii_raw_data_count] +=
+					(float)ascii_num / powf(10.0f, ascii_count);
+				if (ascii_neg) ascii_cal_data[ascii_raw_data_count] *= -1.0f;
+				ascii_raw_data_count++;
+				ascii_num = 0;
+				ascii_neg = 0;
+				ascii_count = 0;
+			} else if (*p == 13) {
+				//printf("ascii_parse newline\n");
+				if ((ascii_state == ASCII_STATE_CAL1 && ascii_raw_data_count != 9)
+				 || (ascii_state == ASCII_STATE_CAL2 && ascii_raw_data_count != 8))
+					goto fail;
+				ascii_cal_data[ascii_raw_data_count] +=
+					(float)ascii_num / powf(10.0f, ascii_count);
+				if (ascii_neg) ascii_cal_data[ascii_raw_data_count] *= -1.0f;
+				if (ascii_state == ASCII_STATE_CAL1) {
+					cal1_data(ascii_cal_data);
+				} else if (ascii_state == ASCII_STATE_CAL2) {
+					cal2_data(ascii_cal_data);
+				}
+				ret = 1;
+				ascii_raw_data_count = 0;
+				ascii_num = 0;
+				ascii_neg = 0;
+				ascii_count = 0;
+				ascii_state = ASCII_STATE_WORD;
+			} else if (*p == 10) {
+			} else {
+				goto fail;
+			}
 		}
 	}
 	return ret;
 fail:
+	printf("ascii FAIL\n");
+	ascii_state = ASCII_STATE_WORD;
 	ascii_raw_data_count = 0;
 	ascii_num = 0;
 	ascii_neg = 0;

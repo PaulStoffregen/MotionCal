@@ -17,6 +17,7 @@ void raw_data_reset(void)
 	magcal.invW[2][2] = 1.0f;
 	magcal.FitError = 100.0f;
 	magcal.FitErrorAge = 100.0f;
+	magcal.B = 50.0f;
 }
 
 static void add_magcal_data(const int16_t *data)
@@ -56,6 +57,29 @@ static void add_magcal_data(const int16_t *data)
 	magcal.valid[i] = 1;
 }
 
+void cal1_data(const float *data)
+{
+#if 0
+	int i;
+
+	printf("got cal1_data:\n");
+	for (i=0; i<10; i++) {
+		printf("  %.5f\n", data[i]);
+	}
+#endif
+}
+
+void cal2_data(const float *data)
+{
+#if 0
+	int i;
+
+	printf("got cal2_data:\n");
+	for (i=0; i<9; i++) {
+		printf("  %.5f\n", data[i]);
+	}
+#endif
+}
 
 void raw_data(const int16_t *data)
 {
@@ -171,26 +195,35 @@ static uint8_t * copy_lsb_first(uint8_t *dst, float f)
 
 int send_calibration(void)
 {
-	uint8_t *p, buf[52];
+	uint8_t *p, buf[68];
 	uint16_t crc;
-	int i, j;
+	int i;
 
 	p = buf;
 	*p++ = 117; // 2 byte signature
 	*p++ = 84;
 	for (i=0; i < 3; i++) {
-		p = copy_lsb_first(p, magcal.V[i]); // 12 bytes offset/hardiron
+		p = copy_lsb_first(p, 0.0f); // accelerometer offsets
 	}
 	for (i=0; i < 3; i++) {
-		for (j=0; j < 3; j++) {
-			p = copy_lsb_first(p, magcal.invW[i][j]); // 36 bytes softiron
-		}
+		p = copy_lsb_first(p, 0.0f); // gyroscope offsets
 	}
+	for (i=0; i < 3; i++) {
+		p = copy_lsb_first(p, magcal.V[i]); // 12 bytes offset/hardiron
+	}
+	p = copy_lsb_first(p, magcal.B); // field strength
+	p = copy_lsb_first(p, magcal.invW[0][0]); //10
+	p = copy_lsb_first(p, magcal.invW[1][1]); //11
+	p = copy_lsb_first(p, magcal.invW[2][2]); //12
+	p = copy_lsb_first(p, magcal.invW[0][1]); //13
+	p = copy_lsb_first(p, magcal.invW[0][2]); //14
+	p = copy_lsb_first(p, magcal.invW[1][2]); //15
 	crc = 0xFFFF;
-	for (i=0; i < 50; i++) {
+	for (i=0; i < 66; i++) {
 		crc = crc16(crc, buf[i]);
 	}
 	*p++ = crc;   // 2 byte crc check
 	*p++ = crc >> 8;
-	return write_serial_data(buf, 52);
+	return write_serial_data(buf, 68);
 }
+
