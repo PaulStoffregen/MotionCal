@@ -103,19 +103,23 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
 	wxBoxSizer *middlesizer = new wxStaticBoxSizer(wxVERTICAL, this, "Magnetometer");
 	wxBoxSizer *rightsizer = new wxStaticBoxSizer(wxVERTICAL, this, "Calibration");
 
-	topsizer->Add(leftsizer, 0, wxALL, 5);
+	topsizer->Add(leftsizer, 0, wxALL | wxEXPAND | wxALIGN_TOP, 5);
 	topsizer->Add(middlesizer, 1, wxALL | wxEXPAND, 5);
 	topsizer->Add(rightsizer, 0, wxALL | wxEXPAND | wxALIGN_TOP, 5);
 
-	//text = new wxStaticText(this, wxID_ANY, "blah blah blah");
-	//middlesizer->Add(text, 0);
+	vsizer = new wxBoxSizer(wxVERTICAL);
+	middlesizer->Add(vsizer, 1, wxEXPAND | wxALL, 8);
+
+	text = new wxStaticText(this, wxID_ANY, "");
+	text->SetLabelMarkup("<small><i>Ideal calibration is a perfectly centered sphere</i></small>");
+	vsizer->Add(text, 0, wxALIGN_CENTER_HORIZONTAL, 0);
 
 	int gl_attrib[20] = { WX_GL_RGBA, WX_GL_MIN_RED, 1, WX_GL_MIN_GREEN, 1,
 		WX_GL_MIN_BLUE, 1, WX_GL_DEPTH_SIZE, 1, WX_GL_DOUBLEBUFFER, 0};
 	m_canvas = new MyCanvas(this, wxID_ANY, gl_attrib);
 	m_canvas->SetMinSize(wxSize(400,400));
+	vsizer->Add(m_canvas, 1, wxEXPAND | wxALL, 0);
 
-	middlesizer->Add(m_canvas, 1, wxEXPAND | wxALL, 8);
 
 	hsizer = new wxGridSizer(4, 0, 15);
 	middlesizer->Add(hsizer, 0, wxALL | wxALIGN_CENTER_HORIZONTAL, 5);
@@ -185,6 +189,13 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
 		m_gyro[i] = new wxStaticText(this, wxID_ANY, "0.000");
 		vsizer->Add(m_gyro[i], 1);
 	}
+
+	calsizer->AddSpacer(8);
+	text = new wxStaticText(this, wxID_ANY, "");
+	text->SetLabelMarkup("<small>Calibration should be performed\n<b>after</b> final installation.  Presence\nof magnets and ferrous metals\ncan alter magnetic calibration.\nMechanical stress during\nassembly can alter accelerometer\nand gyroscope calibration.</small>");
+	//text->Wrap(200);
+	//calsizer->Add(text, 0, wxEXPAND | wxALIGN_CENTER_HORIZONTAL, 0);
+	calsizer->Add(text, 0, wxALIGN_CENTER_HORIZONTAL, 0);
 
 	topsizer->SetSizeHints(this);
 	SetSizerAndFit(topsizer);
