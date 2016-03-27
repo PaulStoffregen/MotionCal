@@ -65,6 +65,17 @@ public:
 	void OnPort(wxCommandEvent &event);
 	void OnSendCal(wxCommandEvent &event);
 private:
+	wxStaticText *m_err_coverage;
+	wxStaticText *m_err_variance;
+	wxStaticText *m_err_wobble;
+	wxStaticText *m_err_fit;
+
+	wxStaticText *m_mag_offset[3];
+	wxStaticText *m_mag_mapping[3][3];
+	wxStaticText *m_mag_field;
+	wxStaticText *m_accel[3];
+	wxStaticText *m_gyro[3];
+
 	MyCanvas *m_canvas;
 	wxTimer *m_timer;
 	void OnAbout(wxCommandEvent &event);

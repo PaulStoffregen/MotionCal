@@ -75,7 +75,10 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
 {
 	wxMenuBar *menuBar;
 	wxMenu *menu;
+	wxSizer *hsizer, *vsizer, *calsizer;
+	wxStaticText *text;
 	//wxMenuItem *item;
+	int i, j;
 
 	menuBar = new wxMenuBar;
 	menu = new wxMenu;
@@ -98,21 +101,91 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
 	wxBoxSizer *topsizer = new wxBoxSizer(wxHORIZONTAL);
 	wxBoxSizer *leftsizer = new wxStaticBoxSizer(wxVERTICAL, this, "Communication");
 	wxBoxSizer *middlesizer = new wxStaticBoxSizer(wxVERTICAL, this, "Magnetometer");
-	wxBoxSizer *rightsizer = new wxStaticBoxSizer(wxVERTICAL, this, "Gyroscope");
+	wxBoxSizer *rightsizer = new wxStaticBoxSizer(wxVERTICAL, this, "Calibration");
 
 	topsizer->Add(leftsizer, 0, wxALL, 5);
 	topsizer->Add(middlesizer, 1, wxALL | wxEXPAND, 5);
-	topsizer->Add(rightsizer, 0, wxALL, 5);
+	topsizer->Add(rightsizer, 0, wxALL | wxEXPAND | wxALIGN_TOP, 5);
 
-	int gl_attrib[20] =
-        { WX_GL_RGBA, WX_GL_MIN_RED, 1, WX_GL_MIN_GREEN, 1,
-        WX_GL_MIN_BLUE, 1, WX_GL_DEPTH_SIZE, 1,
-        WX_GL_DOUBLEBUFFER,
-	0};
+	//text = new wxStaticText(this, wxID_ANY, "blah blah blah");
+	//middlesizer->Add(text, 0);
+
+	int gl_attrib[20] = { WX_GL_RGBA, WX_GL_MIN_RED, 1, WX_GL_MIN_GREEN, 1,
+		WX_GL_MIN_BLUE, 1, WX_GL_DEPTH_SIZE, 1, WX_GL_DOUBLEBUFFER, 0};
 	m_canvas = new MyCanvas(this, wxID_ANY, gl_attrib);
 	m_canvas->SetMinSize(wxSize(400,400));
 
-	middlesizer->Add(m_canvas, 1, wxEXPAND | wxALL, 10);
+	middlesizer->Add(m_canvas, 1, wxEXPAND | wxALL, 8);
+
+	hsizer = new wxGridSizer(4, 0, 15);
+	middlesizer->Add(hsizer, 0, wxALL | wxALIGN_CENTER_HORIZONTAL, 5);
+	vsizer = new wxBoxSizer(wxVERTICAL);
+	hsizer->Add(vsizer, 1, wxALIGN_CENTER_HORIZONTAL);
+	text = new wxStaticText(this, wxID_ANY, "Gaps");
+	vsizer->Add(text, 1, wxALIGN_CENTER_HORIZONTAL);
+	m_err_coverage = new wxStaticText(this, wxID_ANY, "100.0%");
+	vsizer->Add(m_err_coverage, 1, wxALIGN_CENTER_HORIZONTAL);
+	vsizer = new wxBoxSizer(wxVERTICAL);
+	hsizer->Add(vsizer, 1, wxALIGN_CENTER_HORIZONTAL);
+	text = new wxStaticText(this, wxID_ANY, "Variance");
+	vsizer->Add(text, 1, wxALIGN_CENTER_HORIZONTAL);
+	m_err_variance = new wxStaticText(this, wxID_ANY, "100.0%");
+	vsizer->Add(m_err_variance, 1, wxALIGN_CENTER_HORIZONTAL);
+	vsizer = new wxBoxSizer(wxVERTICAL);
+	hsizer->Add(vsizer, 1, wxALIGN_CENTER_HORIZONTAL);
+	text = new wxStaticText(this, wxID_ANY, "Wobble");
+	vsizer->Add(text, 1, wxALIGN_CENTER_HORIZONTAL);
+	m_err_wobble = new wxStaticText(this, wxID_ANY, "100.0%");
+	vsizer->Add(m_err_wobble, 1, wxALIGN_CENTER_HORIZONTAL);
+	vsizer = new wxBoxSizer(wxVERTICAL);
+	hsizer->Add(vsizer, 1, wxALIGN_CENTER_HORIZONTAL);
+	text = new wxStaticText(this, wxID_ANY, "Fit Error");
+	vsizer->Add(text, 1, wxALIGN_CENTER_HORIZONTAL);
+	m_err_fit = new wxStaticText(this, wxID_ANY, "100.0%");
+	vsizer->Add(m_err_fit, 1, wxALIGN_CENTER_HORIZONTAL);
+
+	calsizer = new wxBoxSizer(wxVERTICAL);
+	rightsizer->Add(calsizer, 0, wxALL, 8);
+	text = new wxStaticText(this, wxID_ANY, "Magnetic Offset");
+	calsizer->Add(text, 0, wxTOP|wxBOTTOM, 4);
+	vsizer = new wxGridSizer(1, 0, 0);
+	calsizer->Add(vsizer, 1, wxLEFT, 20);
+	for (i=0; i < 3; i++) {
+		m_mag_offset[i] = new wxStaticText(this, wxID_ANY, "0.00");
+		vsizer->Add(m_mag_offset[i], 1);
+	}
+	text = new wxStaticText(this, wxID_ANY, "Magnetic Mapping");
+	calsizer->Add(text, 0, wxTOP|wxBOTTOM, 4);
+	vsizer = new wxGridSizer(3, 0, 12);
+	calsizer->Add(vsizer, 1, wxLEFT, 20);
+	for (i=0; i < 3; i++) {
+		for (j=0; j < 3; j++) {
+			m_mag_mapping[i][j] = new wxStaticText(this, wxID_ANY,
+				((i == j) ? "+1.000" : "+0.000"));
+			vsizer->Add(m_mag_mapping[i][j], 1);
+		}
+	}
+	text = new wxStaticText(this, wxID_ANY, "Magnetic Field");
+	calsizer->Add(text, 0, wxTOP|wxBOTTOM, 4);
+	m_mag_field = new wxStaticText(this, wxID_ANY, "0.00");
+	calsizer->Add(m_mag_field, 0, wxLEFT, 20);
+	text = new wxStaticText(this, wxID_ANY, "Accelerometer");
+	calsizer->Add(text, 0, wxTOP|wxBOTTOM, 4);
+	vsizer = new wxGridSizer(1, 0, 0);
+	calsizer->Add(vsizer, 1, wxLEFT, 20);
+	for (i=0; i < 3; i++) {
+		m_accel[i] = new wxStaticText(this, wxID_ANY, "0.000");
+		vsizer->Add(m_accel[i], 1);
+	}
+	text = new wxStaticText(this, wxID_ANY, "Gyroscope");
+	calsizer->Add(text, 0, wxTOP|wxBOTTOM, 4);
+	vsizer = new wxGridSizer(1, 0, 0);
+	calsizer->Add(vsizer, 1, wxLEFT, 20);
+	for (i=0; i < 3; i++) {
+		m_gyro[i] = new wxStaticText(this, wxID_ANY, "0.000");
+		vsizer->Add(m_gyro[i], 1);
+	}
+
 	topsizer->SetSizeHints(this);
 	SetSizerAndFit(topsizer);
 	Show(true);
@@ -122,11 +195,14 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
 	raw_data_reset();
 	//open_port(PORT);
 	m_timer = new wxTimer(this, ID_TIMER);
-	m_timer->Start(40, wxTIMER_CONTINUOUS);
+	m_timer->Start(14, wxTIMER_CONTINUOUS);
 }
 
 void MyFrame::OnTimer(wxTimerEvent &event)
 {
+	char buf[32];
+	int i, j;
+
 	//printf("OnTimer\n");
 	if (port_is_open()) {
 		read_serial_data();
@@ -135,6 +211,34 @@ void MyFrame::OnTimer(wxTimerEvent &event)
 			sendcal_menu->Enable(ID_SENDCAL, true);
 		} else if (magcal.FitError > 7.0f) {
 			sendcal_menu->Enable(ID_SENDCAL, false);
+		}
+		snprintf(buf, sizeof(buf), "%.1f%%", quality_surface_gap_error());
+		m_err_coverage->SetLabelText(buf);
+		snprintf(buf, sizeof(buf), "%.1f%%", quality_magnitude_variance_error());
+		m_err_variance->SetLabelText(buf);
+		snprintf(buf, sizeof(buf), "%.1f%%", quality_wobble_error());
+		m_err_wobble->SetLabelText(buf);
+		snprintf(buf, sizeof(buf), "%.1f%%", quality_spherical_fit_error());
+		m_err_fit->SetLabelText(buf);
+		for (i=0; i < 3; i++) {
+			snprintf(buf, sizeof(buf), "%.2f", magcal.V[i]);
+			m_mag_offset[i]->SetLabelText(buf);
+		}
+		for (i=0; i < 3; i++) {
+			for (j=0; j < 3; j++) {
+				snprintf(buf, sizeof(buf), "%+.3f", magcal.invW[i][j]);
+				m_mag_mapping[i][j]->SetLabelText(buf);
+			}
+		}
+		snprintf(buf, sizeof(buf), "%.2f", magcal.B);
+		m_mag_field->SetLabelText(buf);
+		for (i=0; i < 3; i++) {
+			snprintf(buf, sizeof(buf), "%.3f", 0.0f); // TODO...
+			m_accel[i]->SetLabelText(buf);
+		}
+		for (i=0; i < 3; i++) {
+			snprintf(buf, sizeof(buf), "%.3f", 0.0f); // TODO...
+			m_gyro[i]->SetLabelText(buf);
 		}
 	} else {
 		sendcal_menu->Enable(ID_SENDCAL, false);
@@ -247,7 +351,7 @@ bool MyApp::OnInit()
 
 	wxPoint pos(100, 100);
 
-	MyFrame *frame = new MyFrame(NULL, -1, wxT("IMU Read"), pos, wxSize(1120,760),
+	MyFrame *frame = new MyFrame(NULL, -1, wxT("Motion Sensor Calibration Tool"), pos, wxSize(1120,760),
 		wxDEFAULT_FRAME_STYLE);
 	frame->Show( true );
 	return true;
