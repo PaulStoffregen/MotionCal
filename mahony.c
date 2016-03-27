@@ -27,8 +27,10 @@
 //----------------------------------------------------------------------------------------------
 // Definitions
 
-#define twoKpDef	(2.0f * 0.01f)	// 2 * proportional gain
+#define twoKpDef	(2.0f * 0.02f)	// 2 * proportional gain
 #define twoKiDef	(2.0f * 0.0f)	// 2 * integral gain
+
+#define INV_SAMPLE_RATE  (1.0f / SENSORFS)
 
 //----------------------------------------------------------------------------------------------
 // Variable definitions
@@ -47,6 +49,7 @@ static void mahony_init();
 static void mahony_update(float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz);
 void mahony_updateIMU(float gx, float gy, float gz, float ax, float ay, float az);
 
+static int reset_next_update=0;
 
 
 void fusion_init(void)
@@ -92,12 +95,18 @@ void fusion_read(Quaternion_t *q)
 
 static void mahony_init()
 {
+	static int first=1;
+
 	twoKp = twoKpDef;	// 2 * proportional gain (Kp)
 	twoKi = twoKiDef;	// 2 * integral gain (Ki)
-	q0 = 1.0f;
-	q1 = 0.0f;
-	q2 = 0.0f;
-	q3 = 0.0f;
+	if (first) {
+		q0 = 1.0f;
+		q1 = 0.0f;	// TODO: set a flag to immediately capture
+		q2 = 0.0f;	// magnetic orientation on next update
+		q3 = 0.0f;
+		first = 0;
+	}
+	reset_next_update = 1;
 	integralFBx = 0.0f;
 	integralFBy = 0.0f;
 	integralFBz = 0.0f;
@@ -134,7 +143,14 @@ static void mahony_update(float gx, float gy, float gz, float ax, float ay, floa
 		mx *= recipNorm;
 		my *= recipNorm;
 		mz *= recipNorm;
-
+#if 0
+		// crazy experiement - no filter, just use magnetometer...
+		q0 = 0;
+		q1 = mx;
+		q2 = my;
+		q3 = mz;
+		return;
+#endif
 		// Auxiliary variables to avoid repeated arithmetic
 		q0q0 = q0 * q0;
 		q0q1 = q0 * q1;
@@ -170,29 +186,37 @@ static void mahony_update(float gx, float gy, float gz, float ax, float ay, floa
 		// Compute and apply integral feedback if enabled
 		if(twoKi > 0.0f) {
 			// integral error scaled by Ki
-			integralFBx += twoKi * halfex * (1.0f / SENSORFS);
-			integralFBy += twoKi * halfey * (1.0f / SENSORFS);
-			integralFBz += twoKi * halfez * (1.0f / SENSORFS);
+			integralFBx += twoKi * halfex * INV_SAMPLE_RATE;
+			integralFBy += twoKi * halfey * INV_SAMPLE_RATE;
+			integralFBz += twoKi * halfez * INV_SAMPLE_RATE;
 			gx += integralFBx;	// apply integral feedback
 			gy += integralFBy;
 			gz += integralFBz;
-		}
-		else {
+		} else {
 			integralFBx = 0.0f;	// prevent integral windup
 			integralFBy = 0.0f;
 			integralFBz = 0.0f;
 		}
 
+		//printf("err =  %.3f, %.3f, %.3f\n", halfex, halfey, halfez);
+
 		// Apply proportional feedback
-		gx += twoKp * halfex;
-		gy += twoKp * halfey;
-		gz += twoKp * halfez;
+		if (reset_next_update) {
+			gx += 2.0f * halfex;
+			gy += 2.0f * halfey;
+			gz += 2.0f * halfez;
+			reset_next_update = 0;
+		} else {
+			gx += twoKp * halfex;
+			gy += twoKp * halfey;
+			gz += twoKp * halfez;
+		}
 	}
 
 	// Integrate rate of change of quaternion
-	gx *= (0.5f * (1.0f / SENSORFS));		// pre-multiply common factors
-	gy *= (0.5f * (1.0f / SENSORFS));
-	gz *= (0.5f * (1.0f / SENSORFS));
+	gx *= (0.5f * INV_SAMPLE_RATE);		// pre-multiply common factors
+	gy *= (0.5f * INV_SAMPLE_RATE);
+	gz *= (0.5f * INV_SAMPLE_RATE);
 	qa = q0;
 	qb = q1;
 	qc = q2;
@@ -242,14 +266,13 @@ void mahony_updateIMU(float gx, float gy, float gz, float ax, float ay, float az
 		// Compute and apply integral feedback if enabled
 		if(twoKi > 0.0f) {
 			// integral error scaled by Ki
-			integralFBx += twoKi * halfex * (1.0f / SENSORFS);
-			integralFBy += twoKi * halfey * (1.0f / SENSORFS);
-			integralFBz += twoKi * halfez * (1.0f / SENSORFS);
+			integralFBx += twoKi * halfex * INV_SAMPLE_RATE;
+			integralFBy += twoKi * halfey * INV_SAMPLE_RATE;
+			integralFBz += twoKi * halfez * INV_SAMPLE_RATE;
 			gx += integralFBx;	// apply integral feedback
 			gy += integralFBy;
 			gz += integralFBz;
-		}
-		else {
+		} else {
 			integralFBx = 0.0f;	// prevent integral windup
 			integralFBy = 0.0f;
 			integralFBz = 0.0f;
@@ -262,9 +285,9 @@ void mahony_updateIMU(float gx, float gy, float gz, float ax, float ay, float az
 	}
 
 	// Integrate rate of change of quaternion
-	gx *= (0.5f * (1.0f / SENSORFS));		// pre-multiply common factors
-	gy *= (0.5f * (1.0f / SENSORFS));
-	gz *= (0.5f * (1.0f / SENSORFS));
+	gx *= (0.5f * INV_SAMPLE_RATE);		// pre-multiply common factors
+	gy *= (0.5f * INV_SAMPLE_RATE);
+	gz *= (0.5f * INV_SAMPLE_RATE);
 	qa = q0;
 	qb = q1;
 	qc = q2;
@@ -294,6 +317,7 @@ static float invSqrt(float x) {
 
 	y.f = x;
 	y.i = 0x5f375a86 - (y.i >> 1);
+	y.f = y.f * (1.5f - (halfx * y.f * y.f));
 	y.f = y.f * (1.5f - (halfx * y.f * y.f));
 	y.f = y.f * (1.5f - (halfx * y.f * y.f));
 	return y.f;
