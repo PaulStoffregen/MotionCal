@@ -319,12 +319,9 @@ void MyMenu::OnShowPortList(wxMenuEvent &event)
         menu = event.GetMenu();
         //printf("OnShowPortList, %s\n", (const char *)menu->GetTitle());
         if (menu != port_menu) return;
-
-        wxMenuItemList old_items = menu->GetMenuItems();
-        num = old_items.GetCount();
-        for (int i = old_items.GetCount() - 1; i >= 0; i--) {
-                menu->Delete(old_items[i]);
-        }
+	while (menu->GetMenuItemCount() > 0) {
+		menu->Delete(menu->GetMenuItems()[0]);
+	}
         menu->AppendRadioItem(9000, " (none)");
         wxArrayString list = serial_port_list();
         num = list.GetCount();
@@ -338,6 +335,7 @@ void MyMenu::OnShowPortList(wxMenuEvent &event)
                 }
         }
         if (!any) menu->Check(9000, true);
+	menu->UpdateUI();
 }
 
 void MyMenu::OnHighlight(wxMenuEvent &event)
