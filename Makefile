@@ -15,11 +15,11 @@ MAKEFLAGS = --jobs=12
 
 else ifeq ($(OS), MACOSX)
 ALL = gui.app
-CC = gcc-4.2
-CXX = g++-4.2
+CC=/usr/bin/clang
+CXX=/usr/bin/clang++
 CFLAGS = -O2 -Wall -D$(OS)
-CXXFLAGS = $(CFLAGS) `$(WXCONFIG) --cppflags`
-WXCONFIG = ~/wxwidgets/3.0.2.mac-opengl/bin/wx-config
+WXCONFIG = wx-config
+CXXFLAGS = $(CFLAGS)  `$(WXCONFIG) --cppflags`
 CLILIBS = -lglut -lGLU -lGL -lm
 
 else ifeq ($(OS), WINDOWS)
@@ -40,7 +40,7 @@ OBJS = visualize.o serialdata.o rawdata.o magcal.o matrix.o fusion.o quality.o m
 all: $(ALL)
 
 gui: gui.o portlist.o $(OBJS)
-	$(CXX) -s $(CFLAGS) $(LDFLAGS) -o $@ $^ `$(WXCONFIG) --libs all,opengl`
+	$(CXX) $(CFLAGS) $(LDFLAGS) -o $@ $^ `$(WXCONFIG) --libs all,opengl`
 
 gui.exe: gui
 	cp gui $@
@@ -56,7 +56,7 @@ gui.app: gui Info.plist
 	touch $@
 
 imuread: imuread.o $(OBJS)
-	$(CC) -s $(CFLAGS) $(LDFLAGS) -o $@ $^ $(CLILIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(CLILIBS)
 
 clean:
 	rm -f gui imuread *.o *.exe
