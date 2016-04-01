@@ -527,6 +527,10 @@ int open_port(const char *name)
 		CloseHandle(port_handle);
 		return 0;
 	}
+	if (!EscapeCommFunction(port_handle, SETDTR)) {
+		CloseHandle(port_handle);
+		return 0;
+	}
 	return 1;
 }
 

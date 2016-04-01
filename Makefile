@@ -24,6 +24,7 @@ CXXFLAGS = $(CFLAGS) `$(WXCONFIG) --cppflags`
 WXCONFIG = ~/wxwidgets/3.0.2.mac-opengl/bin/wx-config
 SFLAG = -s
 CLILIBS = -lglut -lGLU -lGL -lm
+VERSION = 0.01
 
 else ifeq ($(OS), MACOSX_CLANG)
 ALL = gui.app
@@ -34,6 +35,7 @@ WXCONFIG = wx-config
 CXXFLAGS = $(CFLAGS) `$(WXCONFIG) --cppflags`
 SFLAG =
 CLILIBS = -lglut -lGLU -lGL -lm
+VERSION = 0.01
 
 else ifeq ($(OS), WINDOWS)
 ALL = gui.exe
@@ -45,7 +47,7 @@ LDFLAGS = -static -static-libgcc
 SFLAG = -s
 WXCONFIG = ~/wxwidgets/3.0.2.mingw-opengl/bin/wx-config
 CLILIBS = -lglut32 -lglu32 -lopengl32 -lm
-VERSION = 0.01
+MAKEFLAGS = --jobs=12
 
 endif
 
