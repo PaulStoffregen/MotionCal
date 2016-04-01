@@ -287,8 +287,12 @@ void MyFrame::OnPort(wxCommandEvent &event)
 void MyFrame::OnAbout(wxCommandEvent &event)
 {
         wxMessageDialog dialog(this,
-                "IMU Read\n\n\nCopyright 2016, PJRC.COM, LLC.",
-                "About IMUREAD", wxOK|wxICON_INFORMATION);
+                "MotionCal - Motion Sensor Calibration Tool\n\n"
+		"Paul Stoffregen <paul@pjrc.com>\n"
+		"http://www.pjrc.com/store/prop_shield.html\n"
+		"https://github.com/PaulStoffregen/MotionCal\n\n"
+		"Copyright 2016, PJRC.COM, LLC.",
+                "About MotionCal", wxOK|wxICON_INFORMATION|wxCENTER);
         dialog.ShowModal();
 }
 
@@ -361,8 +365,8 @@ bool MyApp::OnInit()
 
 	wxPoint pos(100, 100);
 
-	MyFrame *frame = new MyFrame(NULL, -1, wxT("Motion Sensor Calibration Tool"), pos, wxSize(1120,760),
-		wxDEFAULT_FRAME_STYLE);
+	MyFrame *frame = new MyFrame(NULL, -1, "Motion Sensor Calibration Tool",
+		pos, wxSize(1120,760), wxDEFAULT_FRAME_STYLE);
 	frame->Show( true );
 	return true;
 }

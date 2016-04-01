@@ -4,7 +4,7 @@ OS = LINUX
 #OS = WINDOWS
 
 ifeq ($(OS), LINUX)
-ALL = gui imuread
+ALL = MotionCal imuread
 CC = gcc
 CXX = g++
 CFLAGS = -O2 -Wall -D$(OS)
@@ -16,7 +16,7 @@ CLILIBS = -lglut -lGLU -lGL -lm
 MAKEFLAGS = --jobs=12
 
 else ifeq ($(OS), MACOSX)
-ALL = gui.app
+ALL = MotionCal.app
 CC = gcc-4.2
 CXX = g++-4.2
 CFLAGS = -O2 -Wall -D$(OS)
@@ -27,7 +27,7 @@ CLILIBS = -lglut -lGLU -lGL -lm
 VERSION = 0.01
 
 else ifeq ($(OS), MACOSX_CLANG)
-ALL = gui.app
+ALL = MotionCal.app
 CC = /usr/bin/clang
 CXX = /usr/bin/clang++
 CFLAGS = -O2 -Wall -DMACOSX
@@ -38,7 +38,7 @@ CLILIBS = -lglut -lGLU -lGL -lm
 VERSION = 0.01
 
 else ifeq ($(OS), WINDOWS)
-ALL = gui.exe
+ALL = MotionCal.exe
 CC = i686-w64-mingw32-gcc
 CXX = i686-w64-mingw32-g++
 CFLAGS = -O2 -Wall -D$(OS)
@@ -55,14 +55,14 @@ OBJS = visualize.o serialdata.o rawdata.o magcal.o matrix.o fusion.o quality.o m
 
 all: $(ALL)
 
-gui: gui.o portlist.o $(OBJS)
+MotionCal: gui.o portlist.o $(OBJS)
 	$(CXX) $(SFLAG) $(CFLAGS) $(LDFLAGS) -o $@ $^ `$(WXCONFIG) --libs all,opengl`
 
-gui.exe: gui
-	cp gui $@
+MotionCal.exe: MotionCal
+	cp MotionCal $@
 	-./cp_windows.sh $@
 
-gui.app: gui Info.plist
+MotionCal.app: MotionCal Info.plist
 	mkdir -p $@/Contents/MacOS
 	mkdir -p $@/Contents/Resources/English.lproj
 	sed "s/1.234/$(VERSION)/g" Info.plist > $@/Contents/Info.plist
@@ -75,19 +75,18 @@ imuread: imuread.o $(OBJS)
 	$(CC) -s $(CFLAGS) $(LDFLAGS) -o $@ $^ $(CLILIBS)
 
 clean:
-	rm -f gui imuread *.o *.exe
-	rm -rf gui.app .DS_Store
+	rm -f gui MotionCal imuread *.o *.exe
+	rm -rf MotionCal.app .DS_Store
 
-gui.o: gui.cpp gui.h imuread.h
-portlist.o: portlist.cpp gui.h
-imuread.o: imuread.c imuread.h
-visualize.o: visualize.c imuread.h
-serialdata.o: serialdata.c imuread.h
-rawdata.o: rawdata.c imuread.h
-magcal.o: magcal.c imuread.h
-matrix.o: matrix.c imuread.h
-fusion.o: fusion.c imuread.h
-quality.o: quality.c imuread.h
-mahony.o: mahony.c imuread.h
-
+gui.o: gui.cpp gui.h imuread.h Makefile
+portlist.o: portlist.cpp gui.h Makefile
+imuread.o: imuread.c imuread.h Makefile
+visualize.o: visualize.c imuread.h Makefile
+serialdata.o: serialdata.c imuread.h Makefile
+rawdata.o: rawdata.c imuread.h Makefile
+magcal.o: magcal.c imuread.h Makefile
+matrix.o: matrix.c imuread.h Makefile
+fusion.o: fusion.c imuread.h Makefile
+quality.o: quality.c imuread.h Makefile
+mahony.o: mahony.c imuread.h Makefile
 

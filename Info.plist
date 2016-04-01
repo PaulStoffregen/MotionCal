@@ -5,11 +5,11 @@
 <!-- Documentation for this format is at -->
 <!-- http://developer.apple.com/documentation/MacOSX/Conceptual/BPRuntimeConfig/Articles/ConfigFiles.html -->
 	<key>CFBundleDisplayName</key>
-	<string>IMUread</string>
+	<string>Motion Calibrate</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.pjrc.teensy</string>
+	<string>com.pjrc.motioncal</string>
 	<key>CFBundleName</key>
-	<string>IMUread</string>
+	<string>MotionCal</string>
 	<key>CFBundleShortVersionString</key>
 	<string>1.234</string>
 	<key>LSHasLocalizedDisplayName</key>
@@ -19,7 +19,7 @@
 	<key>NSAppleScriptEnabled</key>
 	<false/>
 	<key>CFBundleExecutable</key>
-	<string>gui</string>
+	<string>MotionCal</string>
 	<key>CFBundleIconFile</key>
 	<string>icon.icns</string>
 	<key>CFBundlePackageType</key>
