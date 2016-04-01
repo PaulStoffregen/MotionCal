@@ -16,7 +16,7 @@ CLILIBS = -lglut -lGLU -lGL -lm
 MAKEFLAGS = --jobs=12
 
 else ifeq ($(OS), MACOSX)
-ALL = MotionCal.app
+ALL = MotionCal.dmg
 CC = gcc-4.2
 CXX = g++-4.2
 CFLAGS = -O2 -Wall -D$(OS)
@@ -60,6 +60,7 @@ MotionCal: gui.o portlist.o $(OBJS)
 
 MotionCal.exe: MotionCal
 	cp MotionCal $@
+	-pjrcwinsigntool $@
 	-./cp_windows.sh $@
 
 MotionCal.app: MotionCal Info.plist
@@ -69,14 +70,20 @@ MotionCal.app: MotionCal Info.plist
 	/bin/echo -n 'APPL????' > $@/Contents/PkgInfo
 	cp $< $@/Contents/MacOS/
 	#cp icon.icns $@/Contents/Resources/
+	-pjrcmacsigntool $@
 	touch $@
+
+MotionCal.dmg: MotionCal.app
+	mkdir -p dmg_tmpdir
+	cp -r $< dmg_tmpdir
+	hdiutil create -ov -srcfolder dmg_tmpdir -megabytes 20 -format UDBZ -volname MotionCal $@
 
 imuread: imuread.o $(OBJS)
 	$(CC) -s $(CFLAGS) $(LDFLAGS) -o $@ $^ $(CLILIBS)
 
 clean:
-	rm -f gui MotionCal imuread *.o *.exe
-	rm -rf MotionCal.app .DS_Store
+	rm -f gui MotionCal imuread *.o *.exe *.sign?
+	rm -rf MotionCal.app MotionCal.dmg .DS_Store dmg_tmpdir
 
 gui.o: gui.cpp gui.h imuread.h Makefile
 portlist.o: portlist.cpp gui.h Makefile
