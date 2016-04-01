@@ -63,6 +63,12 @@ static Point_t spheredata[100];
 static Point_t sphereideal[100];
 static int sphereideal_initialized=0;
 static float magnitude[MAGBUFFSIZE];
+static float quality_gaps_buffer;
+static float quality_variance_buffer;
+static float quality_wobble_buffer;
+static int quality_gaps_computed=0;
+static int quality_variance_computed=0;
+static int quality_wobble_computed=0;
 
 void quality_reset(void)
 {
@@ -113,6 +119,9 @@ void quality_reset(void)
 		sphereideal[99].z = -1.0f;
 		sphereideal_initialized = 1;
 	}
+	quality_gaps_computed = 0;
+	quality_variance_computed = 0;
+	quality_wobble_computed = 0;
 }
 
 void quality_update(const Point_t *point)
@@ -130,6 +139,9 @@ void quality_update(const Point_t *point)
 	spheredata[region].y += y;
 	spheredata[region].z += z;
 	count++;
+	quality_gaps_computed = 0;
+	quality_variance_computed = 0;
+	quality_wobble_computed = 0;
 }
 
 // How many surface gaps
@@ -138,6 +150,7 @@ float quality_surface_gap_error(void)
 	float error=0.0f;
 	int i, num;
 
+	if (quality_gaps_computed) return quality_gaps_buffer;
 	for (i=0; i < 100; i++) {
 		num = spheredist[i];
 		if (num == 0) {
@@ -148,7 +161,9 @@ float quality_surface_gap_error(void)
 			error += 0.01f;
 		}
 	}
-	return error;
+	quality_gaps_buffer = error;
+	quality_gaps_computed = 1;
+	return quality_gaps_buffer;
 }
 
 // Variance in magnitude
@@ -157,6 +172,7 @@ float quality_magnitude_variance_error(void)
 	float sum, mean, diff, variance;
 	int i;
 
+	if (quality_variance_computed) return quality_variance_buffer;
 	sum = 0.0f;
 	for (i=0; i < count; i++) {
 		sum += magnitude[i];
@@ -168,7 +184,9 @@ float quality_magnitude_variance_error(void)
 		variance += diff * diff;
 	}
 	variance /= (float)count;
-	return sqrtf(variance) / mean * 100.0f;
+	quality_variance_buffer = sqrtf(variance) / mean * 100.0f;
+	quality_variance_computed = 1;
+	return quality_variance_buffer;
 }
 
 // Offset of piecewise average data from ideal sphere surface
@@ -178,6 +196,7 @@ float quality_wobble_error(void)
 	float xoff=0.0f, yoff=0.0f, zoff=0.0f;
 	int i, n=0;
 
+	if (quality_wobble_computed) return quality_wobble_buffer;
 	sum = 0.0f;
 	for (i=0; i < count; i++) {
 		sum += magnitude[i];
@@ -208,7 +227,9 @@ float quality_wobble_error(void)
 	yoff /= (float)n;
 	zoff /= (float)n;
 	//if (pr) printf("  off = %.2f, %.2f, %.2f\n", xoff, yoff, zoff);
-	return sqrtf(xoff * xoff + yoff * yoff + zoff * zoff) / radius * 100.0f;
+	quality_wobble_buffer = sqrtf(xoff * xoff + yoff * yoff + zoff * zoff) / radius * 100.0f;
+	quality_wobble_computed = 1;
+	return quality_wobble_buffer;
 }
 
 // Freescale's algorithm fit error
