@@ -367,6 +367,9 @@ bool MyApp::OnInit()
 
 	MyFrame *frame = new MyFrame(NULL, -1, "Motion Sensor Calibration Tool",
 		pos, wxSize(1120,760), wxDEFAULT_FRAME_STYLE);
+#ifdef WINDOWS
+	frame->SetIcon(wxIcon("MotionCal"));
+#endif
 	frame->Show( true );
 	return true;
 }
