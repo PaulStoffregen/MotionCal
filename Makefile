@@ -41,6 +41,7 @@ else ifeq ($(OS), WINDOWS)
 ALL = MotionCal.exe
 CC = i686-w64-mingw32-gcc
 CXX = i686-w64-mingw32-g++
+WINDRES = i686-w64-mingw32-windres
 CFLAGS = -O2 -Wall -D$(OS)
 CXXFLAGS = $(CFLAGS) `$(WXCONFIG) --cppflags`
 LDFLAGS = -static -static-libgcc
@@ -58,18 +59,21 @@ all: $(ALL)
 MotionCal: gui.o portlist.o $(OBJS)
 	$(CXX) $(SFLAG) $(CFLAGS) $(LDFLAGS) -o $@ $^ `$(WXCONFIG) --libs all,opengl`
 
-MotionCal.exe: MotionCal
-	cp MotionCal $@
+MotionCal.exe: resource.o gui.o portlist.o $(OBJS)
+	$(CXX) $(SFLAG) $(CFLAGS) $(LDFLAGS) -o $@ $^ `$(WXCONFIG) --libs all,opengl`
 	-pjrcwinsigntool $@
 	-./cp_windows.sh $@
 
-MotionCal.app: MotionCal Info.plist
+resource.o: resource.rs icon.ico
+	$(WINDRES) -o resource.o resource.rs
+
+MotionCal.app: MotionCal Info.plist icon.icns
 	mkdir -p $@/Contents/MacOS
 	mkdir -p $@/Contents/Resources/English.lproj
 	sed "s/1.234/$(VERSION)/g" Info.plist > $@/Contents/Info.plist
 	/bin/echo -n 'APPL????' > $@/Contents/PkgInfo
 	cp $< $@/Contents/MacOS/
-	#cp icon.icns $@/Contents/Resources/
+	cp icon.icns $@/Contents/Resources/
 	-pjrcmacsigntool $@
 	touch $@
 
