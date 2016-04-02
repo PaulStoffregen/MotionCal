@@ -211,6 +211,7 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
 
 void MyFrame::OnTimer(wxTimerEvent &event)
 {
+	float gaps, variance, wobble, fiterror;
 	char buf[32];
 	int i, j;
 
@@ -218,9 +219,13 @@ void MyFrame::OnTimer(wxTimerEvent &event)
 	if (port_is_open()) {
 		read_serial_data();
 		m_canvas->Refresh();
-		if (magcal.FitError < 6.0f) {
+		gaps = quality_surface_gap_error();
+		variance = quality_magnitude_variance_error();
+		wobble = quality_wobble_error();
+		fiterror = quality_spherical_fit_error();
+		if (gaps < 15.0f && variance < 4.5f && wobble < 4.0f && fiterror < 5.0f) {
 			sendcal_menu->Enable(ID_SENDCAL, true);
-		} else if (magcal.FitError > 7.0f) {
+		} else if (gaps > 20.0f && variance > 5.0f && wobble > 5.0f && fiterror > 6.0f) {
 			sendcal_menu->Enable(ID_SENDCAL, false);
 		}
 		snprintf(buf, sizeof(buf), "%.1f%%", quality_surface_gap_error());
