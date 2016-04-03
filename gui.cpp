@@ -46,9 +46,10 @@ void MyCanvas::OnPaint( wxPaintEvent& WXUNUSED(event) )
 
 void MyCanvas::InitGL()
 {
-	//printf("Init\n");
 	SetCurrent(*m_glRC);
 	visualize_init();
+	wxSizeEvent e = wxSizeEvent(GetSize());
+	OnSize(e);
 }
 
 
@@ -74,11 +75,17 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
     const wxPoint &position, const wxSize& size, long style) :
     wxFrame( parent, id, title, position, size, style )
 {
+	wxPanel *panel;
 	wxMenuBar *menuBar;
 	wxMenu *menu;
+	wxSizer *topsizer;
+	wxSizer *leftsizer, *middlesizer, *rightsizer;
 	wxSizer *hsizer, *vsizer, *calsizer;
 	wxStaticText *text;
 	int i, j;
+
+	topsizer = new wxBoxSizer(wxHORIZONTAL);
+	panel = new wxPanel(this);
 
 	menuBar = new wxMenuBar;
 	menu = new wxMenu;
@@ -97,10 +104,9 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
 	menuBar->Append(menu, wxT("&Help"));
 	SetMenuBar(menuBar);
 
-	wxBoxSizer *topsizer = new wxBoxSizer(wxHORIZONTAL);
-	wxBoxSizer *leftsizer = new wxStaticBoxSizer(wxVERTICAL, this, "Communication");
-	wxBoxSizer *middlesizer = new wxStaticBoxSizer(wxVERTICAL, this, "Magnetometer");
-	wxBoxSizer *rightsizer = new wxStaticBoxSizer(wxVERTICAL, this, "Calibration");
+	leftsizer = new wxStaticBoxSizer(wxVERTICAL, panel, "Communication");
+	middlesizer = new wxStaticBoxSizer(wxVERTICAL, panel, "Magnetometer");
+	rightsizer = new wxStaticBoxSizer(wxVERTICAL, panel, "Calibration");
 
 	topsizer->Add(leftsizer, 0, wxALL | wxEXPAND | wxALIGN_TOP, 5);
 	topsizer->Add(middlesizer, 1, wxALL | wxEXPAND, 5);
@@ -108,9 +114,9 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
 
 	vsizer = new wxBoxSizer(wxVERTICAL);
 	leftsizer->Add(vsizer, 0, wxALL, 8);
-	text = new wxStaticText(this, wxID_ANY, "Port");
+	text = new wxStaticText(panel, wxID_ANY, "Port");
 	vsizer->Add(text, 0, wxTOP|wxBOTTOM, 4);
-	m_port_list = new wxComboBox(this, ID_PORTLIST, "",
+	m_port_list = new wxComboBox(panel, ID_PORTLIST, "",
 		wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_READONLY);
 	m_port_list->Append("(none)");
 	m_port_list->Append(SAMPLE_PORT_NAME); // never seen, only for initial size
@@ -118,107 +124,107 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
 	vsizer->Add(m_port_list, 1, wxEXPAND, 0);
 
 	vsizer->AddSpacer(8);
-	text = new wxStaticText(this, wxID_ANY, "Actions");
+	text = new wxStaticText(panel, wxID_ANY, "Actions");
 	vsizer->Add(text, 0, wxTOP|wxBOTTOM, 4);
-	m_button_clear = new wxButton(this, ID_CLEAR_BUTTON, "Clear");
+	m_button_clear = new wxButton(panel, ID_CLEAR_BUTTON, "Clear");
 	m_button_clear->Enable(false);
 	vsizer->Add(m_button_clear, 1, wxEXPAND, 0);
-	m_button_sendcal = new wxButton(this, ID_SENDCAL_BUTTON, "Send Cal");
+	m_button_sendcal = new wxButton(panel, ID_SENDCAL_BUTTON, "Send Cal");
 	vsizer->Add(m_button_sendcal, 1, wxEXPAND, 0);
 	m_button_sendcal->Enable(false);
 
 	vsizer = new wxBoxSizer(wxVERTICAL);
 	middlesizer->Add(vsizer, 1, wxEXPAND | wxALL, 8);
 
-	text = new wxStaticText(this, wxID_ANY, "");
+	text = new wxStaticText(panel, wxID_ANY, "");
 	text->SetLabelMarkup("<small><i>Ideal calibration is a perfectly centered sphere</i></small>");
 	vsizer->Add(text, 0, wxALIGN_CENTER_HORIZONTAL, 0);
 
 	int gl_attrib[20] = { WX_GL_RGBA, WX_GL_MIN_RED, 1, WX_GL_MIN_GREEN, 1,
 		WX_GL_MIN_BLUE, 1, WX_GL_DEPTH_SIZE, 1, WX_GL_DOUBLEBUFFER, 0};
-	m_canvas = new MyCanvas(this, wxID_ANY, gl_attrib);
-	m_canvas->SetMinSize(wxSize(400,400));
+	m_canvas = new MyCanvas(panel, wxID_ANY, gl_attrib);
+	m_canvas->SetMinSize(wxSize(480,480));
 	vsizer->Add(m_canvas, 1, wxEXPAND | wxALL, 0);
-
 
 	hsizer = new wxGridSizer(4, 0, 15);
 	middlesizer->Add(hsizer, 0, wxALL | wxALIGN_CENTER_HORIZONTAL, 5);
 	vsizer = new wxBoxSizer(wxVERTICAL);
 	hsizer->Add(vsizer, 1, wxALIGN_CENTER_HORIZONTAL);
-	text = new wxStaticText(this, wxID_ANY, "Gaps");
+	text = new wxStaticText(panel, wxID_ANY, "Gaps");
 	vsizer->Add(text, 1, wxALIGN_CENTER_HORIZONTAL);
-	m_err_coverage = new wxStaticText(this, wxID_ANY, "100.0%");
+	m_err_coverage = new wxStaticText(panel, wxID_ANY, "100.0%");
 	vsizer->Add(m_err_coverage, 1, wxALIGN_CENTER_HORIZONTAL);
 	vsizer = new wxBoxSizer(wxVERTICAL);
 	hsizer->Add(vsizer, 1, wxALIGN_CENTER_HORIZONTAL);
-	text = new wxStaticText(this, wxID_ANY, "Variance");
+	text = new wxStaticText(panel, wxID_ANY, "Variance");
 	vsizer->Add(text, 1, wxALIGN_CENTER_HORIZONTAL);
-	m_err_variance = new wxStaticText(this, wxID_ANY, "100.0%");
+	m_err_variance = new wxStaticText(panel, wxID_ANY, "100.0%");
 	vsizer->Add(m_err_variance, 1, wxALIGN_CENTER_HORIZONTAL);
 	vsizer = new wxBoxSizer(wxVERTICAL);
 	hsizer->Add(vsizer, 1, wxALIGN_CENTER_HORIZONTAL);
-	text = new wxStaticText(this, wxID_ANY, "Wobble");
+	text = new wxStaticText(panel, wxID_ANY, "Wobble");
 	vsizer->Add(text, 1, wxALIGN_CENTER_HORIZONTAL);
-	m_err_wobble = new wxStaticText(this, wxID_ANY, "100.0%");
+	m_err_wobble = new wxStaticText(panel, wxID_ANY, "100.0%");
 	vsizer->Add(m_err_wobble, 1, wxALIGN_CENTER_HORIZONTAL);
 	vsizer = new wxBoxSizer(wxVERTICAL);
 	hsizer->Add(vsizer, 1, wxALIGN_CENTER_HORIZONTAL);
-	text = new wxStaticText(this, wxID_ANY, "Fit Error");
+	text = new wxStaticText(panel, wxID_ANY, "Fit Error");
 	vsizer->Add(text, 1, wxALIGN_CENTER_HORIZONTAL);
-	m_err_fit = new wxStaticText(this, wxID_ANY, "100.0%");
+	m_err_fit = new wxStaticText(panel, wxID_ANY, "100.0%");
 	vsizer->Add(m_err_fit, 1, wxALIGN_CENTER_HORIZONTAL);
 
 	calsizer = new wxBoxSizer(wxVERTICAL);
 	rightsizer->Add(calsizer, 0, wxALL, 8);
-	text = new wxStaticText(this, wxID_ANY, "Magnetic Offset");
+	text = new wxStaticText(panel, wxID_ANY, "Magnetic Offset");
 	calsizer->Add(text, 0, wxTOP|wxBOTTOM, 4);
 	vsizer = new wxGridSizer(1, 0, 0);
 	calsizer->Add(vsizer, 1, wxLEFT, 20);
 	for (i=0; i < 3; i++) {
-		m_mag_offset[i] = new wxStaticText(this, wxID_ANY, "0.00");
+		m_mag_offset[i] = new wxStaticText(panel, wxID_ANY, "0.00");
 		vsizer->Add(m_mag_offset[i], 1);
 	}
-	text = new wxStaticText(this, wxID_ANY, "Magnetic Mapping");
+	text = new wxStaticText(panel, wxID_ANY, "Magnetic Mapping");
 	calsizer->Add(text, 0, wxTOP|wxBOTTOM, 4);
 	vsizer = new wxGridSizer(3, 0, 12);
 	calsizer->Add(vsizer, 1, wxLEFT, 20);
 	for (i=0; i < 3; i++) {
 		for (j=0; j < 3; j++) {
-			m_mag_mapping[i][j] = new wxStaticText(this, wxID_ANY,
+			m_mag_mapping[i][j] = new wxStaticText(panel, wxID_ANY,
 				((i == j) ? "+1.000" : "+0.000"));
 			vsizer->Add(m_mag_mapping[i][j], 1);
 		}
 	}
-	text = new wxStaticText(this, wxID_ANY, "Magnetic Field");
+	text = new wxStaticText(panel, wxID_ANY, "Magnetic Field");
 	calsizer->Add(text, 0, wxTOP|wxBOTTOM, 4);
-	m_mag_field = new wxStaticText(this, wxID_ANY, "0.00");
+	m_mag_field = new wxStaticText(panel, wxID_ANY, "0.00");
 	calsizer->Add(m_mag_field, 0, wxLEFT, 20);
-	text = new wxStaticText(this, wxID_ANY, "Accelerometer");
+	text = new wxStaticText(panel, wxID_ANY, "Accelerometer");
 	calsizer->Add(text, 0, wxTOP|wxBOTTOM, 4);
 	vsizer = new wxGridSizer(1, 0, 0);
 	calsizer->Add(vsizer, 1, wxLEFT, 20);
 	for (i=0; i < 3; i++) {
-		m_accel[i] = new wxStaticText(this, wxID_ANY, "0.000");
+		m_accel[i] = new wxStaticText(panel, wxID_ANY, "0.000");
 		vsizer->Add(m_accel[i], 1);
 	}
-	text = new wxStaticText(this, wxID_ANY, "Gyroscope");
+	text = new wxStaticText(panel, wxID_ANY, "Gyroscope");
 	calsizer->Add(text, 0, wxTOP|wxBOTTOM, 4);
 	vsizer = new wxGridSizer(1, 0, 0);
 	calsizer->Add(vsizer, 1, wxLEFT, 20);
 	for (i=0; i < 3; i++) {
-		m_gyro[i] = new wxStaticText(this, wxID_ANY, "0.000");
+		m_gyro[i] = new wxStaticText(panel, wxID_ANY, "0.000");
 		vsizer->Add(m_gyro[i], 1);
 	}
 
 	calsizer->AddSpacer(8);
-	text = new wxStaticText(this, wxID_ANY, "");
+	text = new wxStaticText(panel, wxID_ANY, "");
 	text->SetLabelMarkup("<small>Calibration should be performed\n<b>after</b> final installation.  Presence\nof magnets and ferrous metals\ncan alter magnetic calibration.\nMechanical stress during\nassembly can alter accelerometer\nand gyroscope calibration.</small>");
 	//text->Wrap(200);
 	//calsizer->Add(text, 0, wxEXPAND | wxALIGN_CENTER_HORIZONTAL, 0);
 	calsizer->Add(text, 0, wxALIGN_CENTER_HORIZONTAL, 0);
 
-	topsizer->SetSizeHints(this);
-	SetSizerAndFit(topsizer);
+	panel->SetSizer(topsizer);
+	topsizer->SetSizeHints(panel);
+	Fit();
 	Show(true);
 	Raise();
 
@@ -231,6 +237,7 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
 
 void MyFrame::OnTimer(wxTimerEvent &event)
 {
+	static int firstrun=1;
 	float gaps, variance, wobble, fiterror;
 	char buf[32];
 	int i, j;
@@ -238,6 +245,12 @@ void MyFrame::OnTimer(wxTimerEvent &event)
 	//printf("OnTimer\n");
 	if (port_is_open()) {
 		read_serial_data();
+		if (firstrun && m_canvas->IsShown()) {
+			//int h, w;
+			//m_canvas->GetSize(&w, &h);
+			//printf("Canvas initial size = %d, %d\n", w, h);
+			firstrun = 0;
+		}
 		m_canvas->Refresh();
 		gaps = quality_surface_gap_error();
 		variance = quality_magnitude_variance_error();

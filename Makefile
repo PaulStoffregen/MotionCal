@@ -8,10 +8,11 @@ ALL = MotionCal imuread
 CC = gcc
 CXX = g++
 CFLAGS = -O2 -Wall -D$(OS)
+WXCONFIG = ~/wxwidgets/3.0.2.gtk2-opengl/bin/wx-config
+WXFLAGS = `$(WXCONFIG) --cppflags`
 CXXFLAGS = $(CFLAGS) `$(WXCONFIG) --cppflags`
 LDFLAGS =
 SFLAG = -s
-WXCONFIG = ~/wxwidgets/3.0.2.gtk2-opengl/bin/wx-config
 CLILIBS = -lglut -lGLU -lGL -lm
 MAKEFLAGS = --jobs=12
 
@@ -20,8 +21,9 @@ ALL = MotionCal.dmg
 CC = gcc-4.2
 CXX = g++-4.2
 CFLAGS = -O2 -Wall -D$(OS)
-CXXFLAGS = $(CFLAGS) `$(WXCONFIG) --cppflags`
 WXCONFIG = ~/wxwidgets/3.0.2.mac-opengl/bin/wx-config
+WXFLAGS = `$(WXCONFIG) --cppflags`
+CXXFLAGS = $(CFLAGS) `$(WXCONFIG) --cppflags`
 SFLAG = -s
 CLILIBS = -lglut -lGLU -lGL -lm
 VERSION = 0.01
@@ -32,6 +34,7 @@ CC = /usr/bin/clang
 CXX = /usr/bin/clang++
 CFLAGS = -O2 -Wall -DMACOSX
 WXCONFIG = wx-config
+WXFLAGS = `$(WXCONFIG) --cppflags`
 CXXFLAGS = $(CFLAGS) `$(WXCONFIG) --cppflags`
 SFLAG =
 CLILIBS = -lglut -lGLU -lGL -lm
@@ -39,14 +42,19 @@ VERSION = 0.01
 
 else ifeq ($(OS), WINDOWS)
 ALL = MotionCal.exe
-CC = i686-w64-mingw32-gcc
-CXX = i686-w64-mingw32-g++
-WINDRES = i686-w64-mingw32-windres
+#MINGW_TOOLCHAIN = i586-mingw32msvc
+MINGW_TOOLCHAIN = i686-w64-mingw32
+CC = $(MINGW_TOOLCHAIN)-gcc
+CXX = $(MINGW_TOOLCHAIN)-g++
+WINDRES = $(MINGW_TOOLCHAIN)-windres
 CFLAGS = -O2 -Wall -D$(OS)
-CXXFLAGS = $(CFLAGS) `$(WXCONFIG) --cppflags`
+WXFLAGS = `$(WXCONFIG) --cppflags`
+CXXFLAGS = $(CFLAGS) $(WXFLAGS)
 LDFLAGS = -static -static-libgcc
 SFLAG = -s
-WXCONFIG = ~/wxwidgets/3.0.2.mingw-opengl/bin/wx-config
+#WXCONFIG = ~/wxwidgets/3.0.2.mingw-opengl-i586/bin/wx-config
+#WXCONFIG = ~/wxwidgets/3.0.2.mingw-opengl/bin/wx-config
+WXCONFIG = ~/wxwidgets/3.1.0.mingw-opengl/bin/wx-config
 CLILIBS = -lglut32 -lglu32 -lopengl32 -lm
 MAKEFLAGS = --jobs=12
 
@@ -64,8 +72,8 @@ MotionCal.exe: resource.o gui.o portlist.o $(OBJS)
 	-pjrcwinsigntool $@
 	-./cp_windows.sh $@
 
-resource.o: resource.rs icon.ico
-	$(WINDRES) -o resource.o resource.rs
+resource.o: resource.rc icon.ico
+	$(WINDRES) $(WXFLAGS) -o resource.o resource.rc
 
 MotionCal.app: MotionCal Info.plist icon.icns
 	mkdir -p $@/Contents/MacOS

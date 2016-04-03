@@ -622,7 +622,7 @@ int write_serial_data(const void *ptr, int len)
 void close_port(void)
 {
 	CloseHandle(port_handle);
-	port_handle = NULL;
+	port_handle = INVALID_HANDLE_VALUE;
 }
 
 

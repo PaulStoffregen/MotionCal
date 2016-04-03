@@ -25,7 +25,7 @@ static int choose_discard_magcal(void)
 	int32_t rawx, rawy, rawz;
 	int32_t dx, dy, dz;
 	float x, y, z;
-	uint64_t distsq, minsum=0xFFFFFFFFFFFFFFFF;
+	uint64_t distsq, minsum=0xFFFFFFFFFFFFFFFFull;
 	static int runcount=0;
 	int i, j, minindex=0;
 	Point_t point;
