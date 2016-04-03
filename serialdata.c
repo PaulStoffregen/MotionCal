@@ -491,6 +491,7 @@ int open_port(const char *name)
 	len = sizeof(COMMCONFIG);
 	if (!GetCommConfig(port_handle, &port_cfg, &len)) {
 		CloseHandle(port_handle);
+		port_handle = INVALID_HANDLE_VALUE;
 		return 0;
 	}
 	port_cfg.dcb.BaudRate = 115200;
@@ -512,10 +513,12 @@ int open_port(const char *name)
 	port_cfg.dcb.StopBits = ONESTOPBIT;
 	if (!SetCommConfig(port_handle, &port_cfg, sizeof(COMMCONFIG))) {
 		CloseHandle(port_handle);
+		port_handle = INVALID_HANDLE_VALUE;
 		return 0;
 	}
 	if (!EscapeCommFunction(port_handle, CLRDTR | CLRRTS)) {
 		CloseHandle(port_handle);
+		port_handle = INVALID_HANDLE_VALUE;
 		return 0;
 	}
         timeouts.ReadIntervalTimeout            = MAXDWORD;
@@ -525,10 +528,12 @@ int open_port(const char *name)
         timeouts.WriteTotalTimeoutConstant      = 0;
         if (!SetCommTimeouts(port_handle, &timeouts)) {
 		CloseHandle(port_handle);
+		port_handle = INVALID_HANDLE_VALUE;
 		return 0;
 	}
 	if (!EscapeCommFunction(port_handle, SETDTR)) {
 		CloseHandle(port_handle);
+		port_handle = INVALID_HANDLE_VALUE;
 		return 0;
 	}
 	return 1;
@@ -542,10 +547,17 @@ int read_serial_data(void)
 	unsigned char buf[256];
 	int r;
 
+	if (port_handle == INVALID_HANDLE_VALUE) return -1;
 	while (1) {
-		if (!ClearCommError(port_handle, &errmask, &st)) return -1;
+		if (!ClearCommError(port_handle, &errmask, &st)) {
+			r = -1;
+			break;
+		}
 		//printf("Read, %d requested, %lu buffered\n", count, st.cbInQue);
-		if (st.cbInQue <= 0) return 0;
+		if (st.cbInQue <= 0) {
+			r = 0;
+			break;
+		}
 		// now do a ReadFile, now that we know how much we can read
 		// a blocking (non-overlapped) read would be simple, but win32
 		// is all-or-nothing on async I/O and we must have it enabled
@@ -584,6 +596,10 @@ int read_serial_data(void)
 		CloseHandle(ov.hEvent);
 		if (r <= 0) break;
 		newdata(buf, r);
+	}
+	if (r < 0) {
+		CloseHandle(port_handle);
+		port_handle = INVALID_HANDLE_VALUE;
 	}
         return r;
 }
