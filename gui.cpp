@@ -62,11 +62,10 @@ BEGIN_EVENT_TABLE(MyFrame,wxFrame)
 	EVT_BUTTON(ID_CLEAR_BUTTON, MyFrame::OnClear)
 	EVT_BUTTON(ID_SENDCAL_BUTTON, MyFrame::OnSendCal)
 	EVT_TIMER(ID_TIMER, MyFrame::OnTimer)
-	EVT_MENU_RANGE(9000, 9999, MyFrame::OnPort)
+	EVT_MENU_RANGE(9000, 9999, MyFrame::OnPortMenu)
 	EVT_MENU_OPEN(MyFrame::OnShowMenu)
-	EVT_ACTIVATE(MyFrame::OnActivate)
-	//EVT_LEFT_DOWN(MyFrame::OnMouse)
-	EVT_CHOICE(ID_PORTLIST, MyFrame::OnSelect)
+	EVT_COMBOBOX(ID_PORTLIST, MyFrame::OnPortList)
+	EVT_COMBOBOX_DROPDOWN(ID_PORTLIST, MyFrame::OnShowPortList)
 END_EVENT_TABLE()
 
 
@@ -107,17 +106,15 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
 	topsizer->Add(middlesizer, 1, wxALL | wxEXPAND, 5);
 	topsizer->Add(rightsizer, 0, wxALL | wxEXPAND | wxALIGN_TOP, 5);
 
-
 	vsizer = new wxBoxSizer(wxVERTICAL);
 	leftsizer->Add(vsizer, 0, wxALL, 8);
 	text = new wxStaticText(this, wxID_ANY, "Port");
 	vsizer->Add(text, 0, wxTOP|wxBOTTOM, 4);
-	m_port_list = new wxChoice(this, ID_PORTLIST);
+	m_port_list = new wxComboBox(this, ID_PORTLIST, "",
+		wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_READONLY);
 	m_port_list->Append("(none)");
+	m_port_list->Append(SAMPLE_PORT_NAME); // never seen, only for initial size
 	m_port_list->SetSelection(0);
-	//m_port_list->Connect((wxEventType)wxEVT_LEFT_DOWN, &MyFrame::OnMouse);
-	//m_port_list->Connect(wxEVT_LEFT_DOWN, &(MyFrame::OnMouse));
-	//m_port_list->Bind(wxEVT_LEFT_DOWN, &(MyFrame::OnMouse));
 	vsizer->Add(m_port_list, 1, wxEXPAND, 0);
 
 	vsizer->AddSpacer(8);
@@ -248,8 +245,10 @@ void MyFrame::OnTimer(wxTimerEvent &event)
 		fiterror = quality_spherical_fit_error();
 		if (gaps < 15.0f && variance < 4.5f && wobble < 4.0f && fiterror < 5.0f) {
 			m_sendcal_menu->Enable(ID_SENDCAL_MENU, true);
+			m_button_sendcal->Enable(true);
 		} else if (gaps > 20.0f && variance > 5.0f && wobble > 5.0f && fiterror > 6.0f) {
 			m_sendcal_menu->Enable(ID_SENDCAL_MENU, false);
+			m_button_sendcal->Enable(false);
 		}
 		snprintf(buf, sizeof(buf), "%.1f%%", quality_surface_gap_error());
 		m_err_coverage->SetLabelText(buf);
@@ -280,18 +279,28 @@ void MyFrame::OnTimer(wxTimerEvent &event)
 			m_gyro[i]->SetLabelText(buf);
 		}
 	} else {
-		m_sendcal_menu->Enable(ID_SENDCAL_MENU, false);
+		if (!port_name.IsEmpty()) {
+			//printf("port has closed, updating stuff\n");
+			m_sendcal_menu->Enable(ID_SENDCAL_MENU, false);
+			m_button_clear->Enable(false);
+			m_button_sendcal->Enable(false);
+			m_port_list->Clear();
+			m_port_list->Append("(none)");
+			m_port_list->SetSelection(0);
+			port_name = "";
+		}
 	}
 }
 
 void MyFrame::OnClear(wxCommandEvent &event)
 {
-	printf("OnClear\n");
+	//printf("OnClear\n");
+	raw_data_reset();
 }
 
 void MyFrame::OnSendCal(wxCommandEvent &event)
 {
-	printf("OnSendCal\n");
+	/*printf("OnSendCal\n");
 	printf("Magnetic Calibration:   (%.1f%% fit error)\n", magcal.FitError);
 	printf("   %7.2f   %6.3f %6.3f %6.3f\n",
 		magcal.V[0], magcal.invW[0][0], magcal.invW[0][1], magcal.invW[0][2]);
@@ -299,67 +308,79 @@ void MyFrame::OnSendCal(wxCommandEvent &event)
 		magcal.V[1], magcal.invW[1][0], magcal.invW[1][1], magcal.invW[1][2]);
 	printf("   %7.2f   %6.3f %6.3f %6.3f\n",
 		magcal.V[2], magcal.invW[2][0], magcal.invW[2][1], magcal.invW[2][2]);
+	*/
 	send_calibration();
 }
 
+
+
 void MyFrame::OnShowMenu(wxMenuEvent &event)
 {
-        wxMenu *menu;
-	int any=0;
-        int num;
-
-        menu = event.GetMenu();
-        printf("OnShow Port Menu, %s\n", (const char *)menu->GetTitle());
+        wxMenu *menu = event.GetMenu();
         if (menu != m_port_menu) return;
+        //printf("OnShow Port Menu, %s\n", (const char *)menu->GetTitle());
 	while (menu->GetMenuItemCount() > 0) {
 		menu->Delete(menu->GetMenuItems()[0]);
 	}
         menu->AppendRadioItem(9000, " (none)");
-        wxArrayString list = serial_port_list();
-        num = list.GetCount();
 	bool isopen = port_is_open();
+	if (!isopen) menu->Check(9000, true);
+        wxArrayString list = serial_port_list();
+        int num = list.GetCount();
         for (int i=0; i < num; i++) {
-                //printf("%d: port %s\n", i, (const char *)list[i]);
                 menu->AppendRadioItem(9001 + i, list[i]);
                 if (isopen && port_name.IsSameAs(list[i])) {
                         menu->Check(9001 + i, true);
-                        any = 1;
                 }
         }
-        if (!any) menu->Check(9000, true);
 	menu->UpdateUI();
 }
 
-void MyFrame::OnActivate(wxActivateEvent& event)
+void MyFrame::OnShowPortList(wxCommandEvent& event)
 {
-	if (!event.GetActive()) return;
-	printf("OnActivate, %s\n", "??");
+	//printf("OnShowPortList\n");
+	m_port_list->Clear();
+	m_port_list->Append("(none)");
+	wxArrayString list = serial_port_list();
+	int num = list.GetCount();
+	for (int i=0; i < num; i++) {
+		m_port_list->Append(list[i]);
+	}
 }
 
-void MyFrame::OnMouse(wxMouseEvent& event)
-{
-	printf("OnMouse\n");
-	event.Skip();
-}
 
-void MyFrame::OnSelect(wxCommandEvent& event)
-{
-	printf("OnSelect, %s\n", "??");
-}
-
-void MyFrame::OnPort(wxCommandEvent &event)
+void MyFrame::OnPortMenu(wxCommandEvent &event)
 {
         int id = event.GetId();
         wxString name = m_port_menu->FindItem(id)->GetItemLabelText();
 
 	close_port();
-        printf("OnPort, id = %d, name = %s\n", id, (const char *)name);
-	m_sendcal_menu->Enable(ID_SENDCAL_MENU, false);
+        //printf("OnPortMenu, id = %d, name = %s\n", id, (const char *)name);
 	port_name = name;
+	m_port_list->Clear();
+	m_port_list->Append(port_name);
+	m_port_list->SetSelection(0);
         if (id == 9000) return;
 	raw_data_reset();
 	open_port((const char *)name);
+	m_button_clear->Enable(true);
 }
+
+void MyFrame::OnPortList(wxCommandEvent& event)
+{
+	int selected = m_port_list->GetSelection();
+	if (selected == wxNOT_FOUND) return;
+	wxString name = m_port_list->GetString(selected);
+	//printf("OnPortList, %s\n", (const char *)name);
+	close_port();
+	port_name = name;
+	if (name == "(none)") return;
+	raw_data_reset();
+	open_port((const char *)name);
+	m_button_clear->Enable(true);
+}
+
+
 
 
 void MyFrame::OnAbout(wxCommandEvent &event)

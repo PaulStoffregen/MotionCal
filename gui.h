@@ -63,10 +63,6 @@ public:
 		const wxSize &size = wxDefaultSize,
 		long style = wxDEFAULT_FRAME_STYLE);
 	~MyFrame(void);
-	void InitGL();
-	void OnPort(wxCommandEvent &event);
-	void OnSendCal(wxCommandEvent &event);
-	void OnClear(wxCommandEvent &event);
 private:
 	wxStaticText *m_err_coverage;
 	wxStaticText *m_err_variance;
@@ -84,15 +80,17 @@ private:
 	wxButton *m_button_clear;
 	wxButton *m_button_sendcal;
 	wxMenu *m_port_menu;
-	wxChoice *m_port_list;
+	wxComboBox *m_port_list;
 	wxMenu *m_sendcal_menu;
+	void OnSendCal(wxCommandEvent &event);
+	void OnClear(wxCommandEvent &event);
 	void OnShowMenu(wxMenuEvent &event);
-	void OnActivate(wxActivateEvent &event);
-	void OnMouse(wxMouseEvent &event);
-	void OnAbout(wxCommandEvent &event);
-	void OnSelect(wxCommandEvent& event);
-	void OnQuit(wxCommandEvent &event);
+	void OnShowPortList(wxCommandEvent &event);
+	void OnPortList(wxCommandEvent& event);
+	void OnPortMenu(wxCommandEvent &event);
 	void OnTimer(wxTimerEvent &event);
+	void OnAbout(wxCommandEvent &event);
+	void OnQuit(wxCommandEvent &event);
 	DECLARE_EVENT_TABLE()
 };
 
@@ -109,6 +107,15 @@ private:
 
 // portlist.cpp
 wxArrayString serial_port_list();
+
+// sample port name, for initial sizing of left panel
+#if defined(LINUX)
+#define SAMPLE_PORT_NAME "/dev/ttyACM5."
+#elif defined(WINDOWS)
+#define SAMPLE_PORT_NAME "COM22:."
+#elif defined(MACOSX)
+#define SAMPLE_PORT_NAME "/dev/cu.usbmodem2457891..."
+#endif
 
 
 #endif
