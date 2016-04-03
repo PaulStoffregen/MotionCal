@@ -2,9 +2,6 @@
 #include "imuread.h"
 
 
-
-wxMenu *port_menu;
-wxMenu *sendcal_menu;
 wxString port_name;
 
 
@@ -61,12 +58,17 @@ void MyCanvas::InitGL()
 BEGIN_EVENT_TABLE(MyFrame,wxFrame)
 	EVT_MENU(wxID_ABOUT, MyFrame::OnAbout)
 	EVT_MENU(wxID_EXIT, MyFrame::OnQuit)
-	EVT_MENU(ID_SENDCAL, MyFrame::OnSendCal)
+	EVT_MENU(ID_SENDCAL_MENU, MyFrame::OnSendCal)
+	EVT_BUTTON(ID_CLEAR_BUTTON, MyFrame::OnClear)
+	EVT_BUTTON(ID_SENDCAL_BUTTON, MyFrame::OnSendCal)
 	EVT_TIMER(ID_TIMER, MyFrame::OnTimer)
 	EVT_MENU_RANGE(9000, 9999, MyFrame::OnPort)
-	EVT_MENU_OPEN(MyMenu::OnShowPortList)
-	EVT_MENU_HIGHLIGHT(-1, MyMenu::OnHighlight)
+	EVT_MENU_OPEN(MyFrame::OnShowMenu)
+	EVT_ACTIVATE(MyFrame::OnActivate)
+	//EVT_LEFT_DOWN(MyFrame::OnMouse)
+	EVT_CHOICE(ID_PORTLIST, MyFrame::OnSelect)
 END_EVENT_TABLE()
+
 
 
 MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
@@ -77,23 +79,21 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
 	wxMenu *menu;
 	wxSizer *hsizer, *vsizer, *calsizer;
 	wxStaticText *text;
-	//wxMenuItem *item;
 	int i, j;
 
 	menuBar = new wxMenuBar;
 	menu = new wxMenu;
-	menu->Append(ID_SENDCAL, wxT("Send Calibration"));
-	sendcal_menu = menu;
-	sendcal_menu->Enable(ID_SENDCAL, false);
+	menu->Append(ID_SENDCAL_MENU, wxT("Send Calibration"));
+	m_sendcal_menu = menu;
+	m_sendcal_menu->Enable(ID_SENDCAL_MENU, false);
 	menu->Append(wxID_EXIT, wxT("Quit"));
 	menuBar->Append(menu, wxT("&File"));
 
 	menu = new wxMenu;
 	menuBar->Append(menu, "Port");
-	port_menu = menu;
+	m_port_menu = menu;
 
 	menu = new wxMenu;
-	//item = new wxMenuItem(menu, ID_ABOUT, "About");
 	menu->Append(wxID_ABOUT, wxT("About"));
 	menuBar->Append(menu, wxT("&Help"));
 	SetMenuBar(menuBar);
@@ -106,6 +106,29 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
 	topsizer->Add(leftsizer, 0, wxALL | wxEXPAND | wxALIGN_TOP, 5);
 	topsizer->Add(middlesizer, 1, wxALL | wxEXPAND, 5);
 	topsizer->Add(rightsizer, 0, wxALL | wxEXPAND | wxALIGN_TOP, 5);
+
+
+	vsizer = new wxBoxSizer(wxVERTICAL);
+	leftsizer->Add(vsizer, 0, wxALL, 8);
+	text = new wxStaticText(this, wxID_ANY, "Port");
+	vsizer->Add(text, 0, wxTOP|wxBOTTOM, 4);
+	m_port_list = new wxChoice(this, ID_PORTLIST);
+	m_port_list->Append("(none)");
+	m_port_list->SetSelection(0);
+	//m_port_list->Connect((wxEventType)wxEVT_LEFT_DOWN, &MyFrame::OnMouse);
+	//m_port_list->Connect(wxEVT_LEFT_DOWN, &(MyFrame::OnMouse));
+	//m_port_list->Bind(wxEVT_LEFT_DOWN, &(MyFrame::OnMouse));
+	vsizer->Add(m_port_list, 1, wxEXPAND, 0);
+
+	vsizer->AddSpacer(8);
+	text = new wxStaticText(this, wxID_ANY, "Actions");
+	vsizer->Add(text, 0, wxTOP|wxBOTTOM, 4);
+	m_button_clear = new wxButton(this, ID_CLEAR_BUTTON, "Clear");
+	m_button_clear->Enable(false);
+	vsizer->Add(m_button_clear, 1, wxEXPAND, 0);
+	m_button_sendcal = new wxButton(this, ID_SENDCAL_BUTTON, "Send Cal");
+	vsizer->Add(m_button_sendcal, 1, wxEXPAND, 0);
+	m_button_sendcal->Enable(false);
 
 	vsizer = new wxBoxSizer(wxVERTICAL);
 	middlesizer->Add(vsizer, 1, wxEXPAND | wxALL, 8);
@@ -224,9 +247,9 @@ void MyFrame::OnTimer(wxTimerEvent &event)
 		wobble = quality_wobble_error();
 		fiterror = quality_spherical_fit_error();
 		if (gaps < 15.0f && variance < 4.5f && wobble < 4.0f && fiterror < 5.0f) {
-			sendcal_menu->Enable(ID_SENDCAL, true);
+			m_sendcal_menu->Enable(ID_SENDCAL_MENU, true);
 		} else if (gaps > 20.0f && variance > 5.0f && wobble > 5.0f && fiterror > 6.0f) {
-			sendcal_menu->Enable(ID_SENDCAL, false);
+			m_sendcal_menu->Enable(ID_SENDCAL_MENU, false);
 		}
 		snprintf(buf, sizeof(buf), "%.1f%%", quality_surface_gap_error());
 		m_err_coverage->SetLabelText(buf);
@@ -257,8 +280,13 @@ void MyFrame::OnTimer(wxTimerEvent &event)
 			m_gyro[i]->SetLabelText(buf);
 		}
 	} else {
-		sendcal_menu->Enable(ID_SENDCAL, false);
+		m_sendcal_menu->Enable(ID_SENDCAL_MENU, false);
 	}
+}
+
+void MyFrame::OnClear(wxCommandEvent &event)
+{
+	printf("OnClear\n");
 }
 
 void MyFrame::OnSendCal(wxCommandEvent &event)
@@ -274,14 +302,59 @@ void MyFrame::OnSendCal(wxCommandEvent &event)
 	send_calibration();
 }
 
+void MyFrame::OnShowMenu(wxMenuEvent &event)
+{
+        wxMenu *menu;
+	int any=0;
+        int num;
+
+        menu = event.GetMenu();
+        printf("OnShow Port Menu, %s\n", (const char *)menu->GetTitle());
+        if (menu != m_port_menu) return;
+	while (menu->GetMenuItemCount() > 0) {
+		menu->Delete(menu->GetMenuItems()[0]);
+	}
+        menu->AppendRadioItem(9000, " (none)");
+        wxArrayString list = serial_port_list();
+        num = list.GetCount();
+	bool isopen = port_is_open();
+        for (int i=0; i < num; i++) {
+                //printf("%d: port %s\n", i, (const char *)list[i]);
+                menu->AppendRadioItem(9001 + i, list[i]);
+                if (isopen && port_name.IsSameAs(list[i])) {
+                        menu->Check(9001 + i, true);
+                        any = 1;
+                }
+        }
+        if (!any) menu->Check(9000, true);
+	menu->UpdateUI();
+}
+
+void MyFrame::OnActivate(wxActivateEvent& event)
+{
+	if (!event.GetActive()) return;
+	printf("OnActivate, %s\n", "??");
+}
+
+void MyFrame::OnMouse(wxMouseEvent& event)
+{
+	printf("OnMouse\n");
+	event.Skip();
+}
+
+void MyFrame::OnSelect(wxCommandEvent& event)
+{
+	printf("OnSelect, %s\n", "??");
+}
+
 void MyFrame::OnPort(wxCommandEvent &event)
 {
         int id = event.GetId();
-        wxString name = port_menu->FindItem(id)->GetItemLabelText();
+        wxString name = m_port_menu->FindItem(id)->GetItemLabelText();
 
 	close_port();
-        //printf("OnPort, id = %d, name = %s\n", id, (const char *)name);
-	sendcal_menu->Enable(ID_SENDCAL, false);
+        printf("OnPort, id = %d, name = %s\n", id, (const char *)name);
+	m_sendcal_menu->Enable(ID_SENDCAL_MENU, false);
 	port_name = name;
         if (id == 9000) return;
 	raw_data_reset();
@@ -311,48 +384,6 @@ MyFrame::~MyFrame(void)
 	m_timer->Stop();
 	close_port();
 }
-
-
-/*****************************************************************************/
-// Port Menu
-
-MyMenu::MyMenu(const wxString& title, long style) : wxMenu(title, style)
-{
-}
-
-void MyMenu::OnShowPortList(wxMenuEvent &event)
-{
-        wxMenu *menu;
-	int any=0;
-        int num;
-
-        menu = event.GetMenu();
-        //printf("OnShowPortList, %s\n", (const char *)menu->GetTitle());
-        if (menu != port_menu) return;
-	while (menu->GetMenuItemCount() > 0) {
-		menu->Delete(menu->GetMenuItems()[0]);
-	}
-        menu->AppendRadioItem(9000, " (none)");
-        wxArrayString list = serial_port_list();
-        num = list.GetCount();
-	bool isopen = port_is_open();
-        for (int i=0; i < num; i++) {
-                //printf("%d: port %s\n", i, (const char *)list[i]);
-                menu->AppendRadioItem(9001 + i, list[i]);
-                if (isopen && port_name.IsSameAs(list[i])) {
-                        menu->Check(9001 + i, true);
-                        any = 1;
-                }
-        }
-        if (!any) menu->Check(9000, true);
-	menu->UpdateUI();
-}
-
-void MyMenu::OnHighlight(wxMenuEvent &event)
-{
-	//printf("OnHighlight\n");
-}
-
 
 
 /*****************************************************************************/

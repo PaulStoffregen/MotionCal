@@ -24,8 +24,10 @@
 
 
 #define ID_TIMER		10000
-#define ID_SENDCAL		10001
-
+#define ID_SENDCAL_MENU		10001
+#define ID_CLEAR_BUTTON		10002
+#define ID_SENDCAL_BUTTON	10003
+#define ID_PORTLIST		10004
 
 class MyCanvas : public wxGLCanvas
 {
@@ -64,6 +66,7 @@ public:
 	void InitGL();
 	void OnPort(wxCommandEvent &event);
 	void OnSendCal(wxCommandEvent &event);
+	void OnClear(wxCommandEvent &event);
 private:
 	wxStaticText *m_err_coverage;
 	wxStaticText *m_err_variance;
@@ -78,18 +81,19 @@ private:
 
 	MyCanvas *m_canvas;
 	wxTimer *m_timer;
+	wxButton *m_button_clear;
+	wxButton *m_button_sendcal;
+	wxMenu *m_port_menu;
+	wxChoice *m_port_list;
+	wxMenu *m_sendcal_menu;
+	void OnShowMenu(wxMenuEvent &event);
+	void OnActivate(wxActivateEvent &event);
+	void OnMouse(wxMouseEvent &event);
 	void OnAbout(wxCommandEvent &event);
+	void OnSelect(wxCommandEvent& event);
 	void OnQuit(wxCommandEvent &event);
 	void OnTimer(wxTimerEvent &event);
 	DECLARE_EVENT_TABLE()
-};
-
-class MyMenu: public wxMenu
-{
-public:
-	MyMenu(const wxString& title = "", long style = 0);
-	void OnShowPortList(wxMenuEvent &event);
-	void OnHighlight(wxMenuEvent &event);
 };
 
 
