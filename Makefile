@@ -61,19 +61,23 @@ MAKEFLAGS = --jobs=12
 endif
 
 OBJS = visualize.o serialdata.o rawdata.o magcal.o matrix.o fusion.o quality.o mahony.o
+IMGS = checkgreen.png checkempty.png checkemptygray.png
 
 all: $(ALL)
 
-MotionCal: gui.o portlist.o $(OBJS)
+MotionCal: gui.o portlist.o images.o $(OBJS)
 	$(CXX) $(SFLAG) $(CFLAGS) $(LDFLAGS) -o $@ $^ `$(WXCONFIG) --libs all,opengl`
 
-MotionCal.exe: resource.o gui.o portlist.o $(OBJS)
+MotionCal.exe: resource.o gui.o portlist.o images.o $(OBJS)
 	$(CXX) $(SFLAG) $(CFLAGS) $(LDFLAGS) -o $@ $^ `$(WXCONFIG) --libs all,opengl`
 	-pjrcwinsigntool $@
 	-./cp_windows.sh $@
 
 resource.o: resource.rc icon.ico
 	$(WINDRES) $(WXFLAGS) -o resource.o resource.rc
+
+images.cpp: $(IMGS) png2c.pl
+	perl png2c.pl $(IMGS) > images.cpp
 
 MotionCal.app: MotionCal Info.plist icon.icns
 	mkdir -p $@/Contents/MacOS
@@ -94,7 +98,7 @@ imuread: imuread.o $(OBJS)
 	$(CC) -s $(CFLAGS) $(LDFLAGS) -o $@ $^ $(CLILIBS)
 
 clean:
-	rm -f gui MotionCal imuread *.o *.exe *.sign?
+	rm -f gui MotionCal imuread *.o *.exe *.sign? images.cpp
 	rm -rf MotionCal.app MotionCal.dmg .DS_Store dmg_tmpdir
 
 gui.o: gui.cpp gui.h imuread.h Makefile

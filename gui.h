@@ -79,6 +79,7 @@ private:
 	wxTimer *m_timer;
 	wxButton *m_button_clear;
 	wxButton *m_button_sendcal;
+	wxStaticBitmap *m_confirm_icon;
 	wxMenu *m_port_menu;
 	wxComboBox *m_port_list;
 	wxMenu *m_sendcal_menu;
@@ -107,6 +108,9 @@ private:
 
 // portlist.cpp
 wxArrayString serial_port_list();
+
+// images.cpp
+wxBitmap MyBitmap(const char *name);
 
 // sample port name, for initial sizing of left panel
 #if defined(LINUX)

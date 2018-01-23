@@ -3,6 +3,7 @@
 
 
 wxString port_name;
+static bool show_calibration_confirmed = false;
 
 
 wxBEGIN_EVENT_TABLE(MyCanvas, wxGLCanvas)
@@ -132,6 +133,13 @@ MyFrame::MyFrame(wxWindow *parent, wxWindowID id, const wxString &title,
 	m_button_sendcal = new wxButton(panel, ID_SENDCAL_BUTTON, "Send Cal");
 	vsizer->Add(m_button_sendcal, 1, wxEXPAND, 0);
 	m_button_sendcal->Enable(false);
+	vsizer->AddSpacer(16);
+	text = new wxStaticText(panel, wxID_ANY, "Status");
+	vsizer->Add(text, 0, wxTOP|wxBOTTOM, 4);
+	wxImage::AddHandler(new wxPNGHandler);
+	//m_confirm_icon = new wxStaticBitmap(panel, ID_CONFIRM_ICON, MyBitmap("checkgreen.png"));
+	m_confirm_icon = new wxStaticBitmap(panel, wxID_ANY, MyBitmap("checkemptygray.png"));
+	vsizer->Add(m_confirm_icon, 0, wxALL | wxALIGN_CENTER_HORIZONTAL, 0);
 
 	vsizer = new wxBoxSizer(wxVERTICAL);
 	middlesizer->Add(vsizer, 1, wxEXPAND | wxALL, 8);
@@ -257,11 +265,17 @@ void MyFrame::OnTimer(wxTimerEvent &event)
 		wobble = quality_wobble_error();
 		fiterror = quality_spherical_fit_error();
 		if (gaps < 15.0f && variance < 4.5f && wobble < 4.0f && fiterror < 5.0f) {
-			m_sendcal_menu->Enable(ID_SENDCAL_MENU, true);
-			m_button_sendcal->Enable(true);
+			if (!m_sendcal_menu->IsEnabled(ID_SENDCAL_MENU) || !m_button_sendcal->IsEnabled()) {
+				m_sendcal_menu->Enable(ID_SENDCAL_MENU, true);
+				m_button_sendcal->Enable(true);
+				m_confirm_icon->SetBitmap(MyBitmap("checkempty.png"));
+			}
 		} else if (gaps > 20.0f && variance > 5.0f && wobble > 5.0f && fiterror > 6.0f) {
-			m_sendcal_menu->Enable(ID_SENDCAL_MENU, false);
-			m_button_sendcal->Enable(false);
+			if (m_sendcal_menu->IsEnabled(ID_SENDCAL_MENU) || m_button_sendcal->IsEnabled()) {
+				m_sendcal_menu->Enable(ID_SENDCAL_MENU, false);
+				m_button_sendcal->Enable(false);
+				m_confirm_icon->SetBitmap(MyBitmap("checkemptygray.png"));
+			}
 		}
 		snprintf(buf, sizeof(buf), "%.1f%%", quality_surface_gap_error());
 		m_err_coverage->SetLabelText(buf);
@@ -297,11 +311,16 @@ void MyFrame::OnTimer(wxTimerEvent &event)
 			m_sendcal_menu->Enable(ID_SENDCAL_MENU, false);
 			m_button_clear->Enable(false);
 			m_button_sendcal->Enable(false);
+			m_confirm_icon->SetBitmap(MyBitmap("checkemptygray.png"));
 			m_port_list->Clear();
 			m_port_list->Append("(none)");
 			m_port_list->SetSelection(0);
 			port_name = "";
 		}
+	}
+	if (show_calibration_confirmed) {
+		m_confirm_icon->SetBitmap(MyBitmap("checkgreen.png"));
+		show_calibration_confirmed = false;
 	}
 }
 
@@ -322,12 +341,13 @@ void MyFrame::OnSendCal(wxCommandEvent &event)
 	printf("   %7.2f   %6.3f %6.3f %6.3f\n",
 		magcal.V[2], magcal.invW[2][0], magcal.invW[2][1], magcal.invW[2][2]);
 	*/
+	m_confirm_icon->SetBitmap(MyBitmap("checkempty.png"));
 	send_calibration();
 }
 
 void calibration_confirmed(void)
 {
-	// TODO: show GUI indication of calibration written to EEPROM
+	show_calibration_confirmed = true;
 }
 
 
@@ -407,7 +427,7 @@ void MyFrame::OnAbout(wxCommandEvent &event)
 		"Paul Stoffregen <paul@pjrc.com>\n"
 		"http://www.pjrc.com/store/prop_shield.html\n"
 		"https://github.com/PaulStoffregen/MotionCal\n\n"
-		"Copyright 2016, PJRC.COM, LLC.",
+		"Copyright 2018, PJRC.COM, LLC.",
                 "About MotionCal", wxOK|wxICON_INFORMATION|wxCENTER);
         dialog.ShowModal();
 }
