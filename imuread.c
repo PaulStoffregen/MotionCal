@@ -21,8 +21,67 @@ static void glut_display_callback(void)
 	glutSwapBuffers();
 }
 
+extern int invert_q0;
+extern int invert_q1;
+extern int invert_q2;
+extern int invert_q3;
+extern int invert_x;
+extern int invert_y;
+extern int invert_z;
+
+static void print_invert_state(void)
+{
+	printf("Invert: %s %s %s %s  %s %s %s\n",
+		(invert_q0 ? "Q0" : "  "),
+		(invert_q1 ? "Q1" : "  "),
+		(invert_q2 ? "Q2" : "  "),
+		(invert_q3 ? "Q3" : "  "),
+		(invert_x ? "x'" : "  "),
+		(invert_y ? "y'" : "  "),
+		(invert_z ? "z'" : "  ")
+	);
+}
+
+
 static void glut_keystroke_callback(unsigned char ch, int x, int y)
 {
+	if (ch == '0') {
+		invert_q0 ^= 1;
+		print_invert_state();
+		return;
+	}
+	if (ch == '1') {
+		invert_q1 ^= 1;
+		print_invert_state();
+		return;
+	}
+	if (ch == '2') {
+		invert_q2 ^= 1;
+		print_invert_state();
+		return;
+	}
+	if (ch == '3') {
+		invert_q3 ^= 1;
+		print_invert_state();
+		return;
+	}
+	if (ch == 'x') {
+		invert_x ^= 1;
+		print_invert_state();
+		return;
+	}
+	if (ch == 'y') {
+		invert_y ^= 1;
+		print_invert_state();
+		return;
+	}
+	if (ch == 'z') {
+		invert_z ^= 1;
+		print_invert_state();
+		return;
+	}
+
+
 	if (magcal.FitError > 9.0) {
 		printf("Poor Calibration: ");
 		printf("soft iron fit error = %.1f%%\n", magcal.FitError);

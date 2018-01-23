@@ -46,6 +46,14 @@ static void rotate(const Point_t *in, Point_t *out, const float *rmatrix)
 static GLuint spherelist;
 static GLuint spherelowreslist;
 
+int invert_q0=0;
+int invert_q1=0;
+int invert_q2=0;
+int invert_q3=1;
+int invert_x=0;
+int invert_y=0;
+int invert_z=0;
+
 void display_callback(void)
 {
 	int i;
@@ -76,11 +84,22 @@ void display_callback(void)
 		memcpy(&orientation, &current_orientation, sizeof(orientation));
 		// TODO: this almost but doesn't perfectly seems to get the
 		//  real & screen axes in sync....
-		//orientation.q0 *= -1.0f;
-		//orientation.q1 *= -1.0f;
-		//orientation.q2 *= -1.0f;
-		orientation.q3 *= -1.0f;
+		if (invert_q0) orientation.q0 *= -1.0f;
+		if (invert_q1) orientation.q1 *= -1.0f;
+		if (invert_q2) orientation.q2 *= -1.0f;
+		if (invert_q3) orientation.q3 *= -1.0f;
 		quad_to_rotation(&orientation, rotation);
+
+		//rotation[0] *= -1.0f;
+		//rotation[1] *= -1.0f;
+		//rotation[2] *= -1.0f;
+		//rotation[3] *= -1.0f;
+		//rotation[4] *= -1.0f;
+		//rotation[5] *= -1.0f;
+		//rotation[6] *= -1.0f;
+		//rotation[7] *= -1.0f;
+		//rotation[8] *= -1.0f;
+
 		for (i=0; i < MAGBUFFSIZE; i++) {
 			if (magcal.valid[i]) {
 				apply_calibration(magcal.BpFast[0][i], magcal.BpFast[1][i],
@@ -91,6 +110,9 @@ void display_callback(void)
 				quality_update(&point);
 				rotate(&point, &draw, rotation);
 				glPushMatrix();
+				if (invert_x) draw.x *= -1.0f;
+				if (invert_y) draw.y *= -1.0f;
+				if (invert_z) draw.z *= -1.0f;
 				glTranslatef(
 					draw.x * xscale + xoff,
 					draw.z * yscale + yoff,
