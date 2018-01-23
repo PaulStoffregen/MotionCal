@@ -186,10 +186,10 @@ void raw_data(const int16_t *data)
 	z = (float)data[2] * G_PER_COUNT;
 	accel.GpFast[0] = x;
 	accel.GpFast[1] = y;
-	accel.GpFast[2] = y;
+	accel.GpFast[2] = z;
 	accel.Gp[0] += x;
 	accel.Gp[1] += y;
-	accel.Gp[2] += y;
+	accel.Gp[2] += z;
 
 	x = (float)data[3] * DEG_PER_SEC_PER_COUNT;
 	y = (float)data[4] * DEG_PER_SEC_PER_COUNT;
