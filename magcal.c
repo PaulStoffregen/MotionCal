@@ -453,7 +453,7 @@ static void fUpdateCalibration10EIG(MagCalibration_t *MagCal)
 	// sum between MINEQUATIONS to MAXEQUATIONS entries into the 10x10 product matrix matA
 	iCount = 0;
 	for (j = 0; j < MAGBUFFSIZE; j++) {
-		if (MagCal->valid[j] != -1) {
+		if (MagCal->valid[j]) {
 			// use first valid magnetic buffer entry as estimate for offset
 			// to help solution (bit counts)
 			if (iCount == 0) {
