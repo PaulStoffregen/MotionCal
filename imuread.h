@@ -69,6 +69,7 @@ extern void close_port(void);
 void raw_data_reset(void);
 void cal1_data(const float *data);
 void cal2_data(const float *data);
+void calibration_confirmed(void);
 void raw_data(const int16_t *data);
 int send_calibration(void);
 void visualize_init(void);

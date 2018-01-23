@@ -97,6 +97,11 @@ static void glut_keystroke_callback(unsigned char ch, int x, int y)
 	send_calibration();
 }
 
+void calibration_confirmed(void)
+{
+	printf("Calibration confirmed!\n");
+}
+
 int main(int argc, char *argv[])
 {
 	raw_data_reset();

@@ -325,6 +325,10 @@ void MyFrame::OnSendCal(wxCommandEvent &event)
 	send_calibration();
 }
 
+void calibration_confirmed(void)
+{
+	// TODO: show GUI indication of calibration written to EEPROM
+}
 
 
 void MyFrame::OnShowMenu(wxMenuEvent &event)

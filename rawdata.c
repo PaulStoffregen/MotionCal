@@ -6,6 +6,9 @@ static AccelSensor_t accel;
 static MagSensor_t   mag;
 static GyroSensor_t  gyro;
 
+static float cal_data_sent[19];
+static int cal_confirm_needed=0;
+
 void raw_data_reset(void)
 {
 	rawcount = OVERSAMPLE_RATIO;
@@ -120,28 +123,72 @@ static void add_magcal_data(const int16_t *data)
 	magcal.valid[i] = 1;
 }
 
+static int is_float_ok(float actual, float expected)
+{
+	float err, maxerr;
+
+	err = fabsf(actual - expected);
+	maxerr = 0.0001f + fabsf(expected) * 0.00003f;
+	if (err <= maxerr) return 1;
+	return 0;
+}
+
 void cal1_data(const float *data)
 {
-#if 0
-	int i;
+	int i, ok;
 
-	printf("got cal1_data:\n");
-	for (i=0; i<10; i++) {
-		printf("  %.5f\n", data[i]);
+	if (cal_confirm_needed) {
+		#if 0
+		printf("expected cal1: ");
+		for (i=0; i<10; i++) {
+			printf("  %.5f,", cal_data_sent[i]);
+		}
+		printf("\ngot cal1_data: ");
+		for (i=0; i<10; i++) {
+			printf("  %.5f,", data[i]);
+		}
+		printf("\n");
+		#endif
+		ok = 1;
+		for (i=0; i<10; i++) {
+			if (!is_float_ok(data[i], cal_data_sent[i])) ok = 0;
+		}
+		if (ok) {
+			cal_confirm_needed &= ~1; // got cal1 confirm
+			if (cal_confirm_needed == 0) {
+				calibration_confirmed();
+			}
+		}
 	}
-#endif
 }
 
 void cal2_data(const float *data)
 {
-#if 0
-	int i;
+	int i, ok;
 
-	printf("got cal2_data:\n");
-	for (i=0; i<9; i++) {
-		printf("  %.5f\n", data[i]);
+	if (cal_confirm_needed) {
+		#if 0
+		printf("expected cal2: ");
+		for (i=0; i<9; i++) {
+			printf(" %.5f,", cal_data_sent[i+10]);
+		}
+		printf("\ngot cal2_data: ");
+		for (i=0; i<9; i++) {
+			printf(" %.5f,", data[i]);
+		}
+		printf("\n");
+		#endif
+		ok = 1;
+		for (i=0; i<9; i++) {
+			if (!is_float_ok(data[i], cal_data_sent[i+10])) ok = 0;
+		}
+		if (ok) {
+			cal_confirm_needed &= ~2; // got cal2 confirm
+			if (cal_confirm_needed == 0) {
+				calibration_confirmed();
+			}
+		}
 	}
-#endif
 }
 
 void raw_data(const int16_t *data)
@@ -267,12 +314,15 @@ int send_calibration(void)
 	*p++ = 84;
 	for (i=0; i < 3; i++) {
 		p = copy_lsb_first(p, 0.0f); // accelerometer offsets
+		cal_data_sent[0+i] = 0.0f;
 	}
 	for (i=0; i < 3; i++) {
 		p = copy_lsb_first(p, 0.0f); // gyroscope offsets
+		cal_data_sent[3+i] = 0.0f;
 	}
 	for (i=0; i < 3; i++) {
 		p = copy_lsb_first(p, magcal.V[i]); // 12 bytes offset/hardiron
+		cal_data_sent[6+i] = magcal.V[i];
 	}
 	p = copy_lsb_first(p, magcal.B); // field strength
 	p = copy_lsb_first(p, magcal.invW[0][0]); //10
@@ -281,6 +331,17 @@ int send_calibration(void)
 	p = copy_lsb_first(p, magcal.invW[0][1]); //13
 	p = copy_lsb_first(p, magcal.invW[0][2]); //14
 	p = copy_lsb_first(p, magcal.invW[1][2]); //15
+	cal_data_sent[9] = magcal.B;
+	cal_data_sent[10] = magcal.invW[0][0];
+	cal_data_sent[11] = magcal.invW[0][1];
+	cal_data_sent[12] = magcal.invW[0][2];
+	cal_data_sent[13] = magcal.invW[1][0];
+	cal_data_sent[14] = magcal.invW[1][1];
+	cal_data_sent[15] = magcal.invW[1][2];
+	cal_data_sent[16] = magcal.invW[2][0];
+	cal_data_sent[17] = magcal.invW[2][1];
+	cal_data_sent[18] = magcal.invW[2][2];
+	cal_confirm_needed = 3;
 	crc = 0xFFFF;
 	for (i=0; i < 66; i++) {
 		crc = crc16(crc, buf[i]);
