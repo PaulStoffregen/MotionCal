@@ -1,5 +1,7 @@
 #include "imuread.h"
 
+// Discussion of what these 4 quality metrics really do
+// https://forum.pjrc.com/threads/59277-Motion-Sensor-Calibration-Tool-Parameter-Understanding
 
 //static int countdown=1000;
 //static int pr=0;
